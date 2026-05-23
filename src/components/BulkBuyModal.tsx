@@ -8,6 +8,7 @@ type Props = {
   maxPixels: number;
   ready: boolean;
   loading: boolean;
+  paymentsEnabled?: boolean;
   onClose: () => void;
   onConfirm: (count: number) => void;
 };
@@ -18,6 +19,7 @@ export function BulkBuyModal({
   maxPixels,
   ready,
   loading,
+  paymentsEnabled = false,
   onClose,
   onConfirm,
 }: Props) {
@@ -116,7 +118,11 @@ export function BulkBuyModal({
             onClick={() => onConfirm(count)}
             className="flex-1 rounded-lg bg-[var(--accent)] py-2.5 text-sm font-semibold text-black disabled:opacity-50"
           >
-            {loading ? "Processing…" : `Buy (demo) ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`}
+            {loading
+              ? "Processing…"
+              : paymentsEnabled
+                ? `Pay ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`
+                : `Buy (demo) ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`}
           </button>
         </div>
       </div>

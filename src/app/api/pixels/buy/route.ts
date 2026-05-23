@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GRID_HEIGHT, GRID_WIDTH } from "@/lib/config";
 import { apiError } from "@/lib/api-error";
+import { blockDemoPurchaseWhenPaymentsEnabled } from "@/lib/demo-purchase-guard";
 import { purchaseExactPixel } from "@/lib/purchase";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { masterImageExists } from "@/lib/store";
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const blocked = blockDemoPurchaseWhenPaymentsEnabled();
+    if (blocked) return blocked;
+
     const limit = await rateLimit(request, "buy", 30, 60);
     if (!limit.allowed) return rateLimitResponse(60);
 

@@ -5,7 +5,7 @@ import {
   getCachedStatus,
   setCachedStatus,
 } from "@/lib/cache";
-import { getStatusCacheTtlSec, isPostgresEnabled } from "@/lib/env";
+import { getStatusCacheTtlSec, getRazorpayKeyId, isPostgresEnabled, isRazorpayEnabled } from "@/lib/env";
 import { ensureSalesMigrated } from "@/lib/migrate-sales";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getSoldCountFast } from "@/lib/sales-store";
@@ -46,6 +46,8 @@ export async function GET(request: Request) {
       remaining: total - sold,
       pricePerPixelInr: PRICE_PER_PIXEL_INR,
       revealedReady: sold > 0 ? await revealedImageExists() : false,
+      paymentsEnabled: isRazorpayEnabled(),
+      razorpayKeyId: getRazorpayKeyId(),
     });
 
     await setCachedStatus(body);

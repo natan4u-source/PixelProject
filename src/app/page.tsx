@@ -5,6 +5,7 @@ import { MAX_BULK_PURCHASE } from "@/lib/config";
 import { PixelGrid } from "@/components/PixelGrid";
 import { PurchasePanel } from "@/components/PurchasePanel";
 import { PurchaseReceipt, type PurchaseReceiptData } from "@/components/PurchaseReceipt";
+import { openRazorpayCheckout } from "@/lib/razorpay-client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -16,6 +17,8 @@ type Status = {
   remaining: number;
   pricePerPixelInr: number;
   revealedReady?: boolean;
+  paymentsEnabled?: boolean;
+  razorpayKeyId?: string | null;
 };
 
 export default function HomePage() {
@@ -75,8 +78,58 @@ export default function HomePage() {
 
   const pricePerPixel = status?.pricePerPixelInr ?? 100;
   const priceLabel = `₹${pricePerPixel.toLocaleString("en-IN")}`;
+  const paymentsEnabled = Boolean(status?.paymentsEnabled);
 
   const bumpRevealed = () => setRevealedVersion((v) => v + 1);
+
+  const finishPurchase = async (receiptData: PurchaseReceiptData, soldPixel?: { x: number; y: number }) => {
+    setReceipt(receiptData);
+    if (soldPixel) {
+      setSelectedIsSold(true);
+      setSelected({ x: soldPixel.x, y: soldPixel.y });
+    }
+    bumpRevealed();
+    await load();
+  };
+
+  const payWithRazorpay = async (
+    payload: { type: "single"; x: number; y: number } | { type: "bulk"; count: number },
+    description: string,
+  ) => {
+    const orderRes = await fetch("/api/payments/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const orderData = await orderRes.json();
+    if (!orderRes.ok) {
+      throw new Error(orderData.error ?? "Could not start payment.");
+    }
+
+    const payment = await openRazorpayCheckout({
+      keyId: orderData.keyId,
+      orderId: orderData.orderId,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      description,
+    });
+
+    const verifyRes = await fetch("/api/payments/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        razorpay_order_id: payment.razorpay_order_id,
+        razorpay_payment_id: payment.razorpay_payment_id,
+        razorpay_signature: payment.razorpay_signature,
+      }),
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyRes.ok) {
+      throw new Error(verifyData.error ?? "Payment verification failed.");
+    }
+
+    return verifyData.receipt as PurchaseReceiptData;
+  };
 
   const handleBuy = async () => {
     if (!selected || !status?.ready) return;
@@ -87,27 +140,30 @@ export default function HomePage() {
     setLoading(true);
     setMessage(null);
 
-    const res = await fetch("/api/pixels/buy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ x: selected.x, y: selected.y }),
-    });
-
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setMessage(data.error ?? "Purchase failed.");
-      return;
+    try {
+      if (paymentsEnabled) {
+        const receiptData = await payWithRazorpay(
+          { type: "single", x: selected.x, y: selected.y },
+          `Pixel (${selected.x}, ${selected.y})`,
+        );
+        await finishPurchase(receiptData, selected);
+      } else {
+        const res = await fetch("/api/pixels/buy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ x: selected.x, y: selected.y }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "Purchase failed.");
+        }
+        await finishPurchase(data.receipt, selected);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Purchase failed.");
+    } finally {
+      setLoading(false);
     }
-
-    setReceipt(data.receipt);
-    setSelectedIsSold(true);
-    if (selected) {
-      setSelected({ x: selected.x, y: selected.y });
-    }
-    bumpRevealed();
-    await load();
   };
 
   const handleBulkBuy = async (count: number) => {
@@ -120,24 +176,32 @@ export default function HomePage() {
     setLoading(true);
     setMessage(null);
 
-    const res = await fetch("/api/pixels/buy-bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ count }),
-    });
-
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setMessage(data.error ?? "Purchase failed.");
-      return;
+    try {
+      if (paymentsEnabled) {
+        const receiptData = await payWithRazorpay(
+          { type: "bulk", count },
+          `${count.toLocaleString("en-IN")} pixels`,
+        );
+        setBulkOpen(false);
+        await finishPurchase(receiptData);
+      } else {
+        const res = await fetch("/api/pixels/buy-bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ count }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "Purchase failed.");
+        }
+        setBulkOpen(false);
+        await finishPurchase(data.receipt);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Purchase failed.");
+    } finally {
+      setLoading(false);
     }
-
-    setBulkOpen(false);
-    setReceipt(data.receipt);
-    bumpRevealed();
-    await load();
   };
 
   const progress = status ? (status.sold / status.total) * 100 : 0;
@@ -154,8 +218,9 @@ export default function HomePage() {
           Buy one pixel. Uncover the picture.
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-[var(--muted)]">
-          Sales are saved on your computer in the <code className="text-[var(--text)]">data</code>{" "}
-          folder — refreshing the browser will not reset them.
+          {paymentsEnabled
+            ? "Pay securely with Razorpay. Each purchase permanently reveals pixels on the grid."
+            : "Sales are saved on your server — refreshing the browser will not reset them."}
         </p>
       </header>
 
@@ -191,7 +256,10 @@ export default function HomePage() {
         >
           Buy pixels
         </button>
-        <p className="text-sm text-[var(--muted)]">₹{pricePerPixel} per pixel · demo checkout</p>
+        <p className="text-sm text-[var(--muted)]">
+          ₹{pricePerPixel} per pixel
+          {paymentsEnabled ? " · Razorpay checkout" : " · demo checkout"}
+        </p>
       </div>
 
       <div className="mb-4 h-2 overflow-hidden rounded-full bg-[var(--surface)]">
@@ -229,6 +297,7 @@ export default function HomePage() {
             isSold={selectedIsSold}
             ready={status?.ready ?? false}
             loading={loading}
+            paymentsEnabled={paymentsEnabled}
             onBuy={handleBuy}
             onClear={() => {
               setSelected(null);
@@ -256,6 +325,7 @@ export default function HomePage() {
         maxPixels={Math.min(status?.remaining ?? 0, MAX_BULK_PURCHASE)}
         ready={status?.ready ?? false}
         loading={loading}
+        paymentsEnabled={paymentsEnabled}
         onClose={() => setBulkOpen(false)}
         onConfirm={handleBulkBuy}
       />

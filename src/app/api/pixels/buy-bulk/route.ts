@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GRID_HEIGHT, GRID_WIDTH, MAX_BULK_PURCHASE } from "@/lib/config";
 import { apiError } from "@/lib/api-error";
+import { blockDemoPurchaseWhenPaymentsEnabled } from "@/lib/demo-purchase-guard";
 import { purchasePixelCount } from "@/lib/purchase";
 import { getSoldCountFast } from "@/lib/sales-store";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const blocked = blockDemoPurchaseWhenPaymentsEnabled();
+    if (blocked) return blocked;
+
     const limit = await rateLimit(request, "buy-bulk", 10, 60);
     if (!limit.allowed) return rateLimitResponse(60);
 

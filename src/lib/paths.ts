@@ -10,4 +10,5 @@ export const PIXELS_PATH = path.join(DATA_DIR, "pixels.json");
 export const PIXELS_BACKUP_PATH = path.join(DATA_DIR, "pixels.backup.json");
 export const SALES_LOG_PATH = path.join(DATA_DIR, "sales.ndjson");
 export const PURCHASES_LOG_PATH = path.join(DATA_DIR, "purchases.ndjson");
+export const PAYMENT_ORDERS_PATH = path.join(DATA_DIR, "payment-orders.json");
 export const META_PATH = path.join(DATA_DIR, "meta.json");

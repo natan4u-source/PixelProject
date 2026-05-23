@@ -7,6 +7,7 @@ type Props = {
   isSold: boolean;
   ready: boolean;
   loading: boolean;
+  paymentsEnabled?: boolean;
   onBuy: () => void;
   onClear: () => void;
 };
@@ -18,6 +19,7 @@ export function PurchasePanel({
   isSold,
   ready,
   loading,
+  paymentsEnabled = false,
   onBuy,
   onClear,
 }: Props) {
@@ -56,7 +58,7 @@ export function PurchasePanel({
             onClick={onBuy}
             className="mt-4 w-full rounded-lg bg-[var(--accent)] px-4 py-3 font-semibold text-black transition hover:bg-[var(--accent-dim)] disabled:opacity-50"
           >
-            {loading ? "Processing…" : `Buy (demo) ${priceLabel}`}
+            {loading ? "Processing…" : paymentsEnabled ? `Pay ${priceLabel}` : `Buy (demo) ${priceLabel}`}
           </button>
         </>
       )}
