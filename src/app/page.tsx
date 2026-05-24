@@ -386,6 +386,19 @@ export default function HomePage() {
       <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/75">
         Choose a side. Buy pixels. Reveal the future.
       </p>
+
+      <div className="forever-pledge mt-5 w-full max-w-xs rounded-xl px-4 py-3.5">
+        <p className="text-sm font-bold leading-snug tracking-wide text-white sm:text-base">
+          This page will never reset.
+        </p>
+        <p className="mt-1 text-sm font-bold leading-snug tracking-wide text-[var(--accent)] sm:text-base">
+          Your support stays forever*
+        </p>
+      </div>
+      <p className="mt-2 max-w-xs text-[10px] leading-relaxed text-white/40">
+        *Every pixel you buy stays on the canvas permanently.
+      </p>
+
       <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40">
         <span>🛡️ Secure</span>
         <span className="text-white/20">•</span>
@@ -490,7 +503,11 @@ export default function HomePage() {
               />
             ) : (
               <div className="rounded-xl border border-dashed border-white/10 bg-[var(--surface)]/50 p-5 text-center text-sm text-[var(--muted)]">
-                Click a pixel on either canvas to buy and shift the battle.
+                Click a pixel on either canvas to buy and shift the battle.{" "}
+                <Link href="/what-is-a-pixel" className="text-[var(--kamal-bright)] underline hover:text-white">
+                  New here? Learn what a pixel is
+                </Link>
+                .
               </div>
             )}
           </div>
@@ -533,9 +550,14 @@ export default function HomePage() {
 
       <footer className="border-t border-white/5 py-8 text-center text-xs text-[var(--muted)]">
         <p className="font-semibold tracking-wide text-white/40">{SITE_NAME}</p>
-        <Link href="/admin" className="mt-2 inline-block underline hover:text-white">
-          Admin panel
-        </Link>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <Link href="/about" className="underline hover:text-white">
+            About
+          </Link>
+          <Link href="/admin" className="underline hover:text-white">
+            Admin panel
+          </Link>
+        </div>
       </footer>
     </div>
   );
