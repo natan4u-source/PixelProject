@@ -24,6 +24,28 @@ type Purchase = {
   pixels: { x: number; y: number; color: string }[];
 };
 
+type AnalyticsSummary = {
+  totalViews: number;
+  uniqueVisitors: number;
+  viewsToday: number;
+  viewsLast7Days: number;
+  topCountries: { country: string; label: string; count: number }[];
+  topRegions: { label: string; count: number }[];
+  topReferrers: { label: string; count: number }[];
+  devices: { label: string; count: number }[];
+  browsers: { label: string; count: number }[];
+  recent: {
+    id: string;
+    ts: string;
+    country: string;
+    region: string;
+    city: string;
+    referrer: string;
+    device: string;
+    browser: string;
+  }[];
+};
+
 const SECRET_KEY = "pixel-admin-secret";
 const PAGE_SIZE = 15;
 
@@ -31,6 +53,7 @@ export default function AdminPage() {
   const [secret, setSecret] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [purchaseTotal, setPurchaseTotal] = useState(0);
   const [purchaseOffset, setPurchaseOffset] = useState(0);
@@ -40,6 +63,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [purchasesLoading, setPurchasesLoading] = useState(false);
 
   useEffect(() => {
@@ -70,6 +94,28 @@ export default function AdminPage() {
       setStats(null);
     } finally {
       setStatsLoading(false);
+    }
+  }, [secret]);
+
+  const loadAnalytics = useCallback(async () => {
+    if (!secret) return;
+    setAnalyticsLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/analytics?t=${Date.now()}`, {
+        headers: { "x-admin-secret": secret },
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAnalytics(null);
+        return;
+      }
+      setAnalytics(data);
+    } catch {
+      setAnalytics(null);
+    } finally {
+      setAnalyticsLoading(false);
     }
   }, [secret]);
 
@@ -104,16 +150,18 @@ export default function AdminPage() {
 
   const refreshAll = useCallback(async () => {
     await loadStats();
+    await loadAnalytics();
     setExpandedId(null);
     await loadPurchases(0, false);
-  }, [loadStats, loadPurchases]);
+  }, [loadStats, loadAnalytics, loadPurchases]);
 
   useEffect(() => {
     if (secret) {
       loadStats();
+      loadAnalytics();
       loadPurchases(0, false);
     }
-  }, [secret, loadStats, loadPurchases]);
+  }, [secret, loadStats, loadAnalytics, loadPurchases]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,10 +254,10 @@ export default function AdminPage() {
         <button
           type="button"
           onClick={refreshAll}
-          disabled={!secret || statsLoading || purchasesLoading}
+          disabled={!secret || statsLoading || analyticsLoading || purchasesLoading}
           className="mt-3 rounded-lg border border-[var(--border)] px-4 py-2 text-sm hover:border-[var(--muted)] disabled:opacity-50"
         >
-          {statsLoading || purchasesLoading ? "Loading…" : "Refresh all"}
+          {statsLoading || analyticsLoading || purchasesLoading ? "Loading…" : "Refresh all"}
         </button>
       </section>
 
@@ -248,6 +296,75 @@ export default function AdminPage() {
                 : "not uploaded yet"}
             </p>
           </div>
+        </section>
+      )}
+
+      {analytics && (
+        <section className="mt-8 space-y-4">
+          <h2 className="text-lg font-semibold">Visitor analytics</h2>
+          <p className="text-sm text-[var(--muted)]">
+            Homepage visits only. Region is estimated from IP — no personal data stored.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Total views" value={analytics.totalViews.toLocaleString("en-IN")} highlight />
+            <StatCard
+              label="Unique visitors"
+              value={analytics.uniqueVisitors.toLocaleString("en-IN")}
+            />
+            <StatCard label="Views today" value={analytics.viewsToday.toLocaleString("en-IN")} />
+            <StatCard
+              label="Last 7 days"
+              value={analytics.viewsLast7Days.toLocaleString("en-IN")}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <AnalyticsList title="Top countries" items={analytics.topCountries.map((item) => ({
+              label: item.label,
+              count: item.count,
+            }))} />
+            <AnalyticsList title="Top regions" items={analytics.topRegions} />
+            <AnalyticsList title="Top referrers" items={analytics.topReferrers} />
+            <AnalyticsList title="Devices" items={analytics.devices} />
+            <AnalyticsList title="Browsers" items={analytics.browsers} />
+          </div>
+
+          {analytics.recent.length > 0 && (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
+              <div className="border-b border-[var(--border)] px-4 py-3">
+                <h3 className="text-sm font-semibold">Recent visits</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-[var(--muted)]">
+                      <th className="px-4 py-2">When</th>
+                      <th className="px-4 py-2">Country</th>
+                      <th className="px-4 py-2">Region</th>
+                      <th className="px-4 py-2">Referrer</th>
+                      <th className="px-4 py-2">Device</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.recent.map((visit) => (
+                      <tr key={visit.id} className="border-t border-[var(--border)]/50">
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          {new Date(visit.ts).toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2">{visit.country}</td>
+                        <td className="px-4 py-2">
+                          {[visit.city, visit.region].filter((part) => part && part !== "Unknown").join(", ") || "—"}
+                        </td>
+                        <td className="px-4 py-2">{visit.referrer}</td>
+                        <td className="px-4 py-2 capitalize">{visit.device}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -445,6 +562,42 @@ function StatCard({
       <p className={`mt-1 text-2xl font-semibold ${highlight ? "text-[var(--accent)]" : ""}`}>
         {value}
       </p>
+    </div>
+  );
+}
+
+function AnalyticsList({
+  title,
+  items,
+}: {
+  title: string;
+  items: { label: string; count: number }[];
+}) {
+  const max = items[0]?.count ?? 1;
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-4">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {items.length === 0 ? (
+        <p className="mt-3 text-sm text-[var(--muted)]">No data yet.</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {items.map((item) => (
+            <li key={`${title}-${item.label}`}>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="truncate">{item.label}</span>
+                <span className="shrink-0 text-[var(--muted)]">{item.count}</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--surface)]">
+                <div
+                  className="h-full rounded-full bg-[var(--accent)]"
+                  style={{ width: `${Math.max(8, (item.count / max) * 100)}%` }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

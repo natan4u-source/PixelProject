@@ -1,6 +1,7 @@
 "use client";
 
 import { BulkBuyModal } from "@/components/BulkBuyModal";
+import { AnalyticsBeacon } from "@/components/AnalyticsBeacon";
 import { MAX_BULK_PURCHASE } from "@/lib/config";
 import { PixelGrid } from "@/components/PixelGrid";
 import { PurchasePanel } from "@/components/PurchasePanel";
@@ -212,6 +213,7 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-4 py-10 sm:px-6">
+      <AnalyticsBeacon path="/" />
       <header className="mb-10 text-center">
         <p className="text-sm uppercase tracking-[0.2em] text-[var(--accent)]">Pixel Reveal</p>
         <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
