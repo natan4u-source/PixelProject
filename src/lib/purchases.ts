@@ -2,7 +2,8 @@ import { promises as fs } from "fs";
 import { randomUUID } from "crypto";
 import { isPostgresEnabled } from "./env";
 import { pgReadPurchases } from "./db/sales";
-import { DATA_DIR, PURCHASES_LOG_PATH } from "./paths";
+import { purchasesLogPath, sideDataDir } from "./paths";
+import type { CanvasSide } from "./sides";
 import type { PixelRecord } from "./store";
 
 export type PurchaseType = "single" | "bulk";
@@ -31,19 +32,22 @@ export function createPurchaseLog(
   };
 }
 
-export async function appendPurchase(entry: PurchaseLog) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.appendFile(PURCHASES_LOG_PATH, JSON.stringify(entry) + "\n", "utf8");
+export async function appendPurchase(side: CanvasSide, entry: PurchaseLog) {
+  await fs.mkdir(sideDataDir(side), { recursive: true });
+  await fs.appendFile(purchasesLogPath(side), JSON.stringify(entry) + "\n", "utf8");
 }
 
-export async function readPurchases(options: { limit: number; offset: number }) {
+export async function readPurchases(
+  side: CanvasSide,
+  options: { limit: number; offset: number },
+) {
   if (isPostgresEnabled()) {
-    return pgReadPurchases(options);
+    return pgReadPurchases(side, options);
   }
 
   let raw = "";
   try {
-    raw = await fs.readFile(PURCHASES_LOG_PATH, "utf8");
+    raw = await fs.readFile(purchasesLogPath(side), "utf8");
   } catch {
     return { purchases: [] as PurchaseLog[], total: 0 };
   }

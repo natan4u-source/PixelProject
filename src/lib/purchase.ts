@@ -19,6 +19,7 @@ import {
   markPixelInBitmap,
   saveSoldBitmap,
 } from "./sold-bitmap";
+import type { CanvasSide } from "./sides";
 import { appendSales, type PixelRecord } from "./store";
 import { appendPurchase, createPurchaseLog } from "./purchases";
 
@@ -27,28 +28,31 @@ export type PurchaseResult = {
   type: "single" | "bulk";
   purchasedAt: string;
   totalInr: number;
+  side: CanvasSide;
   pixels: PixelRecord[];
 };
 
-function queueReveal(records: PixelRecord[]) {
+function queueReveal(side: CanvasSide, records: PixelRecord[]) {
   if (records.length === 0) return;
-  void paintRevealedPixels(records).catch((error) => {
+  void paintRevealedPixels(side, records).catch((error) => {
     console.error("Failed to paint revealed pixels:", error);
   });
 }
 
 async function finalizeFilePurchase(
+  side: CanvasSide,
   type: "single" | "bulk",
   pixels: PixelRecord[],
   totalInr: number,
 ): Promise<PurchaseResult> {
   const log = createPurchaseLog(type, pixels, totalInr);
-  await appendPurchase(log);
+  await appendPurchase(side, log);
   return {
     id: log.id,
     type: log.type,
     purchasedAt: log.purchasedAt,
     totalInr: log.totalInr,
+    side,
     pixels,
   };
 }
@@ -80,14 +84,15 @@ function pickRandomUnsoldPixels(
 }
 
 export async function purchaseExactPixel(
+  side: CanvasSide,
   x: number,
   y: number,
 ): Promise<PurchaseResult> {
-  if (await isPixelSoldFast(x, y)) {
+  if (await isPixelSoldFast(side, x, y)) {
     throw new Error("This pixel is already sold.");
   }
 
-  const image = await loadMasterPixels();
+  const image = await loadMasterPixels(side);
   const color = getPixelColorFromBuffer(image, x, y);
   const record: PixelRecord = {
     x,
@@ -97,44 +102,46 @@ export async function purchaseExactPixel(
   };
 
   if (isPostgresEnabled()) {
-    const log = await pgInsertPurchase("single", [record], PRICE_PER_PIXEL_INR);
-    const soldAfter = await getSoldCountFast();
-    await markPixelsSold([{ x, y }], soldAfter);
-    queueReveal([record]);
+    const log = await pgInsertPurchase(side, "single", [record], PRICE_PER_PIXEL_INR);
+    const soldAfter = await getSoldCountFast(side);
+    await markPixelsSold(side, [{ x, y }], soldAfter);
+    queueReveal(side, [record]);
     return {
       id: log.id,
       type: log.type,
       purchasedAt: log.purchasedAt,
       totalInr: log.totalInr,
+      side,
       pixels: [record],
     };
   }
 
-  await ensureSalesMigrated();
-  await repairSoldBitmapIfNeeded();
+  await ensureSalesMigrated(side);
+  await repairSoldBitmapIfNeeded(side);
 
-  const bitmap = await loadSoldBitmap(true);
+  const bitmap = await loadSoldBitmap(side, true);
   if (isPixelSoldInBitmap(bitmap, x, y)) {
     throw new Error("This pixel is already sold.");
   }
 
   markPixelInBitmap(bitmap, x, y);
-  await saveSoldBitmap(bitmap);
-  await appendSales([record]);
-  await incrementSoldCount(1);
-  await markPixelsSold([{ x, y }], await getSoldCountFast());
-  queueReveal([record]);
+  await saveSoldBitmap(side, bitmap);
+  await appendSales(side, [record]);
+  await incrementSoldCount(side, 1);
+  await markPixelsSold(side, [{ x, y }], await getSoldCountFast(side));
+  queueReveal(side, [record]);
 
-  return finalizeFilePurchase("single", [record], PRICE_PER_PIXEL_INR);
+  return finalizeFilePurchase(side, "single", [record], PRICE_PER_PIXEL_INR);
 }
 
 export async function purchasePixelCount(
+  side: CanvasSide,
   count: number,
 ): Promise<PurchaseResult> {
-  const image = await loadMasterPixels();
+  const image = await loadMasterPixels(side);
 
   if (isPostgresEnabled()) {
-    const coords = await pgPickRandomUnsoldPixels(count);
+    const coords = await pgPickRandomUnsoldPixels(side, count);
     if (coords.length < count) {
       throw new Error(`Only ${coords.length} pixel(s) left to buy.`);
     }
@@ -146,24 +153,25 @@ export async function purchasePixelCount(
       purchasedAt: new Date().toISOString(),
     }));
 
-    const log = await pgInsertPurchase("bulk", bought, count * PRICE_PER_PIXEL_INR);
-    const soldAfter = await getSoldCountFast();
-    await markPixelsSold(coords, soldAfter);
-    queueReveal(bought);
+    const log = await pgInsertPurchase(side, "bulk", bought, count * PRICE_PER_PIXEL_INR);
+    const soldAfter = await getSoldCountFast(side);
+    await markPixelsSold(side, coords, soldAfter);
+    queueReveal(side, bought);
 
     return {
       id: log.id,
       type: log.type,
       purchasedAt: log.purchasedAt,
       totalInr: log.totalInr,
+      side,
       pixels: bought,
     };
   }
 
-  await ensureSalesMigrated();
-  await repairSoldBitmapIfNeeded();
+  await ensureSalesMigrated(side);
+  await repairSoldBitmapIfNeeded(side);
 
-  const bitmap = await loadSoldBitmap(true);
+  const bitmap = await loadSoldBitmap(side, true);
   const coords = pickRandomUnsoldPixels(bitmap, count);
 
   if (coords.length < count) {
@@ -181,11 +189,11 @@ export async function purchasePixelCount(
     markPixelInBitmap(bitmap, x, y);
   }
 
-  await saveSoldBitmap(bitmap);
-  await appendSales(bought);
-  await incrementSoldCount(bought.length);
-  await markPixelsSold(coords, await getSoldCountFast());
-  queueReveal(bought);
+  await saveSoldBitmap(side, bitmap);
+  await appendSales(side, bought);
+  await incrementSoldCount(side, bought.length);
+  await markPixelsSold(side, coords, await getSoldCountFast(side));
+  queueReveal(side, bought);
 
-  return finalizeFilePurchase("bulk", bought, count * PRICE_PER_PIXEL_INR);
+  return finalizeFilePurchase(side, "bulk", bought, count * PRICE_PER_PIXEL_INR);
 }

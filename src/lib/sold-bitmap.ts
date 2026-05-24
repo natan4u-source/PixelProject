@@ -1,38 +1,47 @@
 import { promises as fs } from "fs";
 import { GRID_HEIGHT, GRID_WIDTH } from "./config";
-import { DATA_DIR } from "./paths";
-import path from "path";
+import { soldBitmapPath, sideDataDir } from "./paths";
+import type { CanvasSide } from "./sides";
 import type { PixelRecord } from "./store";
 
-const BITMAP_PATH = path.join(DATA_DIR, "sold.bitmap");
 export const TOTAL_PIXELS = GRID_WIDTH * GRID_HEIGHT;
 export const BITMAP_BYTE_SIZE = Math.ceil(TOTAL_PIXELS / 8);
 
-let cachedBitmap: Buffer | null = null;
+const cachedBitmaps = new Map<CanvasSide, Buffer>();
 
-export function invalidateBitmapCache() {
-  cachedBitmap = null;
+export function invalidateBitmapCache(side?: CanvasSide) {
+  if (side) {
+    cachedBitmaps.delete(side);
+    return;
+  }
+  cachedBitmaps.clear();
 }
 
 export function createEmptyBitmap() {
   return Buffer.alloc(BITMAP_BYTE_SIZE, 0);
 }
 
-export async function loadSoldBitmap(forceReload = false): Promise<Buffer> {
-  if (!forceReload && cachedBitmap) return cachedBitmap;
+export async function loadSoldBitmap(side: CanvasSide, forceReload = false): Promise<Buffer> {
+  if (!forceReload) {
+    const cached = cachedBitmaps.get(side);
+    if (cached) return cached;
+  }
+
+  const bitmapPath = soldBitmapPath(side);
 
   try {
-    const buf = await fs.readFile(BITMAP_PATH);
+    const buf = await fs.readFile(bitmapPath);
     if (buf.length === BITMAP_BYTE_SIZE) {
-      cachedBitmap = buf;
+      cachedBitmaps.set(side, buf);
       return buf;
     }
   } catch {
     // fall through
   }
 
-  cachedBitmap = createEmptyBitmap();
-  return cachedBitmap;
+  const empty = createEmptyBitmap();
+  cachedBitmaps.set(side, empty);
+  return empty;
 }
 
 export function isPixelSoldInBitmap(bitmap: Buffer, x: number, y: number) {
@@ -55,9 +64,10 @@ export function countSoldInBitmap(bitmap: Buffer) {
   return count;
 }
 
-export async function saveSoldBitmap(bitmap: Buffer) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const tmp = `${BITMAP_PATH}.tmp`;
+export async function saveSoldBitmap(side: CanvasSide, bitmap: Buffer) {
+  await fs.mkdir(sideDataDir(side), { recursive: true });
+  const bitmapPath = soldBitmapPath(side);
+  const tmp = `${bitmapPath}.tmp`;
   try {
     await fs.unlink(tmp);
   } catch {
@@ -65,19 +75,19 @@ export async function saveSoldBitmap(bitmap: Buffer) {
   }
   await fs.writeFile(tmp, bitmap);
   try {
-    await fs.rename(tmp, BITMAP_PATH);
+    await fs.rename(tmp, bitmapPath);
   } catch {
-    await fs.copyFile(tmp, BITMAP_PATH);
+    await fs.copyFile(tmp, bitmapPath);
     await fs.unlink(tmp);
   }
-  cachedBitmap = bitmap;
+  cachedBitmaps.set(side, bitmap);
 }
 
-export async function applySoldRecords(records: PixelRecord[]) {
-  const bitmap = Buffer.from(await loadSoldBitmap());
+export async function applySoldRecords(side: CanvasSide, records: PixelRecord[]) {
+  const bitmap = Buffer.from(await loadSoldBitmap(side));
   for (const { x, y } of records) {
     markPixelInBitmap(bitmap, x, y);
   }
-  await saveSoldBitmap(bitmap);
+  await saveSoldBitmap(side, bitmap);
   return bitmap;
 }

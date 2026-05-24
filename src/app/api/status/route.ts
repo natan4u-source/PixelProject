@@ -6,20 +6,72 @@ import {
   setCachedStatus,
 } from "@/lib/cache";
 import { getStatusCacheTtlSec, getRazorpayKeyId, isPostgresEnabled, isRazorpayEnabled } from "@/lib/env";
+import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { ensureSalesMigrated } from "@/lib/migrate-sales";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getSoldCountFast } from "@/lib/sales-store";
 import { masterImageExists, readMeta } from "@/lib/store";
 import { revealedImageExists } from "@/lib/revealed-image";
+import type { CanvasSide } from "@/lib/sides";
+import { sideFromSearchParams } from "@/lib/side-params";
 
 export const dynamic = "force-dynamic";
+
+async function buildSideStatus(side: CanvasSide) {
+  if (!isPostgresEnabled()) {
+    await ensureSalesMigrated(side);
+  }
+
+  const meta = await readMeta(side);
+  const sold = await getSoldCountFast(side);
+  const total = GRID_WIDTH * GRID_HEIGHT;
+
+  return {
+    side,
+    ready: await masterImageExists(side),
+    grid: { width: GRID_WIDTH, height: GRID_HEIGHT },
+    meta,
+    sold,
+    total,
+    remaining: total - sold,
+    pricePerPixelInr: PRICE_PER_PIXEL_INR,
+    revealedReady: sold > 0 ? await revealedImageExists(side) : false,
+  };
+}
 
 export async function GET(request: Request) {
   try {
     const limit = await rateLimit(request, "status", 120, 60);
     if (!limit.allowed) return rateLimitResponse(30);
 
-    const cached = await getCachedStatus();
+    await ensureDualSideLayout();
+
+    const url = new URL(request.url);
+    const showAll = url.searchParams.get("all") === "true";
+
+    if (showAll) {
+      const sides: Record<CanvasSide, Awaited<ReturnType<typeof buildSideStatus>>> = {
+        a: await buildSideStatus("a"),
+        b: await buildSideStatus("b"),
+      };
+
+      const body = JSON.stringify({
+        sides,
+        paymentsEnabled: isRazorpayEnabled(),
+        razorpayKeyId: getRazorpayKeyId(),
+      });
+
+      return new NextResponse(body, {
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": `public, s-maxage=${getStatusCacheTtlSec()}, stale-while-revalidate=30`,
+        },
+      });
+    }
+
+    const side = sideFromSearchParams(url.searchParams);
+
+    const cached = await getCachedStatus(side);
     if (cached) {
       return new NextResponse(cached, {
         headers: {
@@ -29,28 +81,14 @@ export async function GET(request: Request) {
       });
     }
 
-    if (!isPostgresEnabled()) {
-      await ensureSalesMigrated();
-    }
-
-    const meta = await readMeta();
-    const sold = await getSoldCountFast();
-    const total = GRID_WIDTH * GRID_HEIGHT;
-
+    const status = await buildSideStatus(side);
     const body = JSON.stringify({
-      ready: await masterImageExists(),
-      grid: { width: GRID_WIDTH, height: GRID_HEIGHT },
-      meta,
-      sold,
-      total,
-      remaining: total - sold,
-      pricePerPixelInr: PRICE_PER_PIXEL_INR,
-      revealedReady: sold > 0 ? await revealedImageExists() : false,
+      ...status,
       paymentsEnabled: isRazorpayEnabled(),
       razorpayKeyId: getRazorpayKeyId(),
     });
 
-    await setCachedStatus(body);
+    await setCachedStatus(side, body);
 
     return new NextResponse(body, {
       headers: {
@@ -59,6 +97,9 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message.includes("Invalid side")) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return apiError(error);
   }
 }

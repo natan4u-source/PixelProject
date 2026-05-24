@@ -2,15 +2,17 @@
 
 import { BulkBuyModal } from "@/components/BulkBuyModal";
 import { AnalyticsBeacon } from "@/components/AnalyticsBeacon";
-import { MAX_BULK_PURCHASE } from "@/lib/config";
 import { PixelGrid } from "@/components/PixelGrid";
 import { PurchasePanel } from "@/components/PurchasePanel";
 import { PurchaseReceipt, type PurchaseReceiptData } from "@/components/PurchaseReceipt";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
+import { SITE_NAME } from "@/lib/config";
+import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-type Status = {
+type SideStatus = {
+  side: CanvasSide;
   ready: boolean;
   grid: { width: number; height: number };
   sold: number;
@@ -18,30 +20,57 @@ type Status = {
   remaining: number;
   pricePerPixelInr: number;
   revealedReady?: boolean;
-  paymentsEnabled?: boolean;
-  razorpayKeyId?: string | null;
 };
 
+type SelectedPixel = {
+  side: CanvasSide;
+  x: number;
+  y: number;
+};
+
+const FEATURES = [
+  {
+    title: "BUY PIXELS",
+    body: "Choose any canvas. Buy pixels on your side.",
+    icon: "🎯",
+  },
+  {
+    title: "REVEAL TOGETHER",
+    body: "Every pixel you buy reveals the hidden image.",
+    icon: "✨",
+  },
+  {
+    title: "SHIFT THE BATTLE",
+    body: "Your pixels push your side ahead in the battle.",
+    icon: "⚔️",
+  },
+  {
+    title: "SEE THE VICTORY",
+    body: "When your side wins, the full image is revealed!",
+    icon: "🏆",
+  },
+] as const;
+
 export default function HomePage() {
-  const [status, setStatus] = useState<Status | null>(null);
-  const [selected, setSelected] = useState<{ x: number; y: number } | null>(null);
+  const [sides, setSides] = useState<Record<CanvasSide, SideStatus> | null>(null);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
+  const [selected, setSelected] = useState<SelectedPixel | null>(null);
   const [selectedIsSold, setSelectedIsSold] = useState(false);
-  const [revealedVersion, setRevealedVersion] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
+  const [revealedVersion, setRevealedVersion] = useState<Record<CanvasSide, number>>({ a: 0, b: 0 });
+  const [loadingSide, setLoadingSide] = useState<CanvasSide | null>(null);
+  const [bulkOpenForSide, setBulkOpenForSide] = useState<CanvasSide | null>(null);
   const [receipt, setReceipt] = useState<PurchaseReceiptData | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/status?t=${Date.now()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load saved pixels");
-      }
-      setStatus(await res.json());
+      const res = await fetch(`/api/status?all=true&t=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to load saved pixels");
+
+      const data = await res.json();
+      if (data.sides) setSides(data.sides);
+      setPaymentsEnabled(Boolean(data.paymentsEnabled));
       setLoadError(null);
     } catch {
       setLoadError("Could not load saved sales. Check that npm run dev is running.");
@@ -61,9 +90,10 @@ export default function HomePage() {
     }
 
     let cancelled = false;
-    fetch(`/api/pixels/check?x=${selected.x}&y=${selected.y}&t=${Date.now()}`, {
-      cache: "no-store",
-    })
+    fetch(
+      `/api/pixels/check?side=${selected.side}&x=${selected.x}&y=${selected.y}&t=${Date.now()}`,
+      { cache: "no-store" },
+    )
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) setSelectedIsSold(Boolean(data.sold));
@@ -77,35 +107,49 @@ export default function HomePage() {
     };
   }, [selected]);
 
-  const pricePerPixel = status?.pricePerPixelInr ?? 100;
+  const selectedStatus = selected && sides ? sides[selected.side] : null;
+  const pricePerPixel = selectedStatus?.pricePerPixelInr ?? sides?.a.pricePerPixelInr ?? 100;
   const priceLabel = `₹${pricePerPixel.toLocaleString("en-IN")}`;
-  const paymentsEnabled = Boolean(status?.paymentsEnabled);
 
-  const bumpRevealed = () => setRevealedVersion((v) => v + 1);
+  const kamalSold = sides?.a.sold ?? 0;
+  const cockroachSold = sides?.b.sold ?? 0;
+  const totalBattleSold = kamalSold + cockroachSold;
+  const kamalShare = totalBattleSold > 0 ? (kamalSold / totalBattleSold) * 100 : 50;
+  const cockroachShare = totalBattleSold > 0 ? (cockroachSold / totalBattleSold) * 100 : 50;
 
-  const finishPurchase = async (receiptData: PurchaseReceiptData, soldPixel?: { x: number; y: number }) => {
+  const battleLeader: CanvasSide | "tie" | null =
+    kamalSold > cockroachSold ? "a" : cockroachSold > kamalSold ? "b" : totalBattleSold > 0 ? "tie" : null;
+
+  const bumpRevealed = (side: CanvasSide) => {
+    setRevealedVersion((v) => ({ ...v, [side]: v[side] + 1 }));
+  };
+
+  const finishPurchase = async (
+    side: CanvasSide,
+    receiptData: PurchaseReceiptData,
+    soldPixel?: { x: number; y: number },
+  ) => {
     setReceipt(receiptData);
     if (soldPixel) {
       setSelectedIsSold(true);
-      setSelected({ x: soldPixel.x, y: soldPixel.y });
+      setSelected({ side, x: soldPixel.x, y: soldPixel.y });
     }
-    bumpRevealed();
+    bumpRevealed(side);
     await load();
   };
 
   const payWithRazorpay = async (
+    side: CanvasSide,
     payload: { type: "single"; x: number; y: number } | { type: "bulk"; count: number },
     description: string,
   ) => {
     const orderRes = await fetch("/api/payments/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ side, ...payload }),
     });
     const orderData = await orderRes.json();
-    if (!orderRes.ok) {
-      throw new Error(orderData.error ?? "Could not start payment.");
-    }
+    if (!orderRes.ok) throw new Error(orderData.error ?? "Could not start payment.");
 
     const payment = await openRazorpayCheckout({
       keyId: orderData.keyId,
@@ -125,227 +169,374 @@ export default function HomePage() {
       }),
     });
     const verifyData = await verifyRes.json();
-    if (!verifyRes.ok) {
-      throw new Error(verifyData.error ?? "Payment verification failed.");
-    }
+    if (!verifyRes.ok) throw new Error(verifyData.error ?? "Payment verification failed.");
 
     return verifyData.receipt as PurchaseReceiptData;
   };
 
   const handleBuy = async () => {
-    if (!selected || !status?.ready) return;
-    if (status.remaining <= 0) {
-      setMessage("All pixels are sold out. Use the admin panel to clear sales and start again.");
+    if (!selected || !selectedStatus?.ready) return;
+    if (selectedStatus.remaining <= 0) {
+      setMessage(`All pixels are sold out on ${SIDE_INFO[selected.side].label}.`);
       return;
     }
-    setLoading(true);
+
+    const { side, x, y } = selected;
+    setLoadingSide(side);
     setMessage(null);
 
     try {
       if (paymentsEnabled) {
         const receiptData = await payWithRazorpay(
-          { type: "single", x: selected.x, y: selected.y },
-          `Pixel (${selected.x}, ${selected.y})`,
+          side,
+          { type: "single", x, y },
+          `${SIDE_INFO[side].label} pixel (${x}, ${y})`,
         );
-        await finishPurchase(receiptData, selected);
+        await finishPurchase(side, receiptData, { x, y });
       } else {
         const res = await fetch("/api/pixels/buy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ x: selected.x, y: selected.y }),
+          body: JSON.stringify({ side, x, y }),
         });
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error ?? "Purchase failed.");
-        }
-        await finishPurchase(data.receipt, selected);
+        if (!res.ok) throw new Error(data.error ?? "Purchase failed.");
+        await finishPurchase(side, data.receipt, { x, y });
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Purchase failed.");
     } finally {
-      setLoading(false);
+      setLoadingSide(null);
     }
   };
 
-  const handleBulkBuy = async (count: number) => {
-    if (!status?.ready) return;
-    if (status.remaining <= 0) {
-      setMessage("All pixels are sold out. Use the admin panel to clear sales and start again.");
-      setBulkOpen(false);
+  const handleBulkBuy = async (side: CanvasSide, count: number) => {
+    const sideStatus = sides?.[side];
+    if (!sideStatus?.ready) return;
+    if (sideStatus.remaining <= 0) {
+      setMessage(`All pixels are sold out on ${SIDE_INFO[side].label}.`);
+      setBulkOpenForSide(null);
       return;
     }
-    setLoading(true);
+
+    setLoadingSide(side);
     setMessage(null);
 
     try {
       if (paymentsEnabled) {
         const receiptData = await payWithRazorpay(
+          side,
           { type: "bulk", count },
-          `${count.toLocaleString("en-IN")} pixels`,
+          `${count.toLocaleString("en-IN")} pixels on ${SIDE_INFO[side].label}`,
         );
-        setBulkOpen(false);
-        await finishPurchase(receiptData);
+        setBulkOpenForSide(null);
+        await finishPurchase(side, receiptData);
       } else {
         const res = await fetch("/api/pixels/buy-bulk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ count }),
+          body: JSON.stringify({ side, count }),
         });
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error ?? "Purchase failed.");
-        }
-        setBulkOpen(false);
-        await finishPurchase(data.receipt);
+        if (!res.ok) throw new Error(data.error ?? "Purchase failed.");
+        setBulkOpenForSide(null);
+        await finishPurchase(side, data.receipt);
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Purchase failed.");
     } finally {
-      setLoading(false);
+      setLoadingSide(null);
     }
   };
 
-  const progress = status ? (status.sold / status.total) * 100 : 0;
-  const revealedUrl =
-    status && status.sold > 0 && status.revealedReady
-      ? `/api/revealed?v=${revealedVersion}&t=${Date.now()}`
-      : null;
+  const renderHeroCanvas = (side: CanvasSide) => {
+    const status = sides?.[side];
+    const info = SIDE_INFO[side];
+    const isKamal = side === "a";
+    const revealedUrl =
+      status && status.sold > 0 && status.revealedReady
+        ? `/api/revealed?side=${side}&v=${revealedVersion[side]}&t=${Date.now()}`
+        : null;
+    const isSelectedSide = selected?.side === side;
+    const gridSelected = isSelectedSide && selected ? { x: selected.x, y: selected.y } : null;
+
+    const panelClass = isKamal
+      ? isSelectedSide
+        ? "war-panel-kamal war-panel-kamal-active"
+        : "war-panel-kamal"
+      : isSelectedSide
+        ? "war-panel-cockroach war-panel-cockroach-active"
+        : "war-panel-cockroach";
+
+    const accentText = isKamal ? "text-[var(--kamal)]" : "text-[var(--cockroach)]";
+    const hiddenColor = isKamal ? "#1a1208" : "#081a0c";
+    const colClass = side === "a" ? "min-w-0 flex-1 lg:order-1" : "min-w-0 flex-1 lg:order-3";
+
+    const sold = status?.sold ?? 0;
+    const isWinning = battleLeader === side;
+
+    return (
+      <div key={side} className={`min-w-0 ${colClass}`}>
+        <div
+          className={`flex h-full flex-col rounded-2xl border bg-[var(--surface-elevated)]/90 p-3 backdrop-blur-sm sm:p-4 ${panelClass}`}
+        >
+          <div className={`mb-3 flex ${isKamal ? "justify-end" : "justify-start"}`}>
+            <button
+              type="button"
+              onClick={() => setBulkOpenForSide(side)}
+              disabled={!status?.ready || loadingSide !== null || (status?.remaining ?? 0) <= 0}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition disabled:opacity-50 ${
+                isKamal
+                  ? "war-btn-kamal"
+                  : "bg-[var(--cockroach)] text-black hover:brightness-110"
+              }`}
+            >
+              {isKamal ? "Support Kamal" : "Support Cockroach"}
+            </button>
+          </div>
+
+          <div className="mb-3 text-center">
+            <p
+              className={`inline-block rounded-sm px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] sm:text-xs ${
+                isKamal ? "bg-[var(--kamal)] text-black" : "bg-[var(--cockroach)] text-black"
+              }`}
+            >
+              {info.label}
+            </p>
+            <p className={`mt-1.5 text-[11px] font-semibold uppercase tracking-wider sm:text-xs ${accentText}`}>
+              {info.tagline}
+            </p>
+          </div>
+
+          <div
+            className={`mb-3 rounded-xl border px-3 py-3 text-center ${
+              isWinning
+                ? isKamal
+                  ? "border-[var(--kamal)]/50 bg-[var(--kamal)]/10"
+                  : "border-[var(--cockroach)]/50 bg-[var(--cockroach)]/10"
+                : "border-white/10 bg-black/30"
+            }`}
+          >
+            {isWinning && (
+              <p
+                className={`mb-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                  isKamal
+                    ? "bg-[var(--kamal)]/30 text-[var(--kamal-bright)]"
+                    : "bg-[var(--cockroach)]/30 text-[var(--cockroach-bright)]"
+                }`}
+              >
+                👑 Currently winning
+              </p>
+            )}
+            {battleLeader === "tie" && totalBattleSold > 0 && (
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/50">
+                ⚖️ Tied
+              </p>
+            )}
+            <p className={`war-title text-3xl sm:text-4xl ${isKamal ? "war-title-kamal" : "war-title-cockroach"}`}>
+              {sold.toLocaleString("en-IN")}
+            </p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-white/45">pixels sold</p>
+            {status && (
+              <p className="mt-1.5 text-xs text-[var(--muted)]">
+                {status.remaining.toLocaleString("en-IN")} left · ₹{status.pricePerPixelInr}/px
+              </p>
+            )}
+          </div>
+
+          {status && !status.ready && (
+            <p className="mb-2 text-center text-xs text-amber-300">Upload image in admin</p>
+          )}
+
+          {status ? (
+            <PixelGrid
+              width={status.grid.width}
+              height={status.grid.height}
+              soldCount={status.sold}
+              revealedUrl={revealedUrl}
+              hiddenColor={hiddenColor}
+              containerClassName="hero-canvas-grid relative w-full overflow-hidden rounded-xl border border-[var(--border)] bg-black/50"
+              selected={gridSelected}
+              selectedIsSold={isSelectedSide ? selectedIsSold : false}
+              onSelect={(x, y) => {
+                setSelected({ side, x, y });
+                setMessage(null);
+              }}
+            />
+          ) : (
+            <div className="hero-canvas-grid flex items-center justify-center rounded-xl border border-[var(--border)] bg-black/40 text-sm text-[var(--muted)]">
+              Loading…
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const heroCenter = (
+    <div className="hero-center order-1 flex w-full shrink-0 flex-col items-center justify-center px-4 py-6 text-center lg:order-2 lg:w-[min(100%,360px)] lg:px-5 lg:py-8">
+      <p className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--kamal-bright)] sm:text-xs">
+        🔥 Live Pixel War 🔥
+      </p>
+      <h1 className="war-title mt-4 flex flex-col items-center gap-1 sm:gap-2">
+        <span className="war-title-kamal text-4xl sm:text-5xl xl:text-6xl">KAMAL</span>
+        <span className="text-2xl text-white/90 sm:text-3xl xl:text-4xl">VS</span>
+        <span className="war-title-cockroach text-4xl sm:text-5xl xl:text-6xl">COCKROACH</span>
+      </h1>
+      <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/75">
+        Choose a side. Buy pixels. Reveal the future.
+      </p>
+      <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40">
+        <span>🛡️ Secure</span>
+        <span className="text-white/20">•</span>
+        <span>Transparent</span>
+        <span className="text-white/20">•</span>
+        <span>Community powered</span>
+      </p>
+    </div>
+  );
+
+  const bulkSide = bulkOpenForSide;
+  const bulkStatus = bulkSide && sides ? sides[bulkSide] : null;
 
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-4 py-10 sm:px-6">
+    <div className="min-h-screen bg-[var(--bg)]">
       <AnalyticsBeacon path="/" />
-      <header className="mb-10 text-center">
-        <p className="text-sm uppercase tracking-[0.2em] text-[var(--accent)]">Pixel Reveal</p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
-          Buy one pixel. Uncover the picture.
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-[var(--muted)]">
-          {paymentsEnabled
-            ? "Pay securely with Razorpay. Each purchase permanently reveals pixels on the grid."
-            : "Sales are saved on your server — refreshing the browser will not reset them."}
-        </p>
-      </header>
 
-      {loadError && (
-        <p className="mb-4 text-center text-sm text-red-400" role="alert">
-          {loadError}
-        </p>
-      )}
+      {/* Hero arena */}
+      <section id="canvases" className="relative overflow-hidden pt-3 sm:pt-4">
+        <div className="hero-arena-glow pointer-events-none absolute inset-0" aria-hidden="true" />
 
-      {status && status.remaining <= 0 && status.ready && (
-        <p className="mb-4 text-center text-sm text-amber-300" role="status">
-          Every pixel has been sold. Open the{" "}
-          <Link href="/admin" className="underline">
-            admin panel
-          </Link>{" "}
-          and use &quot;Reset grid&quot; to reset the grid.
-        </p>
-      )}
+        <div className="relative mx-auto max-w-[1800px] px-3 sm:px-4">
+          {/* Battle is live — top strip */}
+          <div id="battle" className="mb-4 rounded-2xl border border-white/10 bg-[var(--surface-elevated)]/95 p-4 backdrop-blur-md sm:p-5">
+            <h2 className="text-center text-xs font-bold uppercase tracking-[0.25em] text-white/70 sm:text-sm">
+              The Battle is Live
+            </h2>
 
-      {status && (
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
-          <Stat label="Pixels sold" value={status.sold.toLocaleString()} />
-          <Stat label="Still hidden" value={status.remaining.toLocaleString()} />
-          <Stat label="Revealed" value={`${progress.toFixed(4)}%`} />
+            {battleLeader && battleLeader !== "tie" && (
+              <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-white/55 sm:text-xs">
+                👑{" "}
+                <span
+                  className={
+                    battleLeader === "a" ? "text-[var(--kamal-bright)]" : "text-[var(--cockroach-bright)]"
+                  }
+                >
+                  {SIDE_INFO[battleLeader].teamName} is ahead
+                </span>
+              </p>
+            )}
+
+            {battleLeader === "tie" && totalBattleSold > 0 && (
+              <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-white/55 sm:text-xs">
+                ⚖️ Dead heat — tied on pixels sold
+              </p>
+            )}
+
+            <div className="mt-3 flex items-center gap-3">
+              <span className="hidden shrink-0 text-right font-mono text-xs text-[var(--kamal)] sm:block sm:w-20">
+                {kamalSold.toLocaleString("en-IN")}
+              </span>
+              <div className="flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-black/50 sm:h-3">
+                <div
+                  className="battle-bar-kamal transition-all duration-700"
+                  style={{ width: `${kamalShare}%` }}
+                />
+                <div
+                  className="battle-bar-cockroach transition-all duration-700"
+                  style={{ width: `${cockroachShare}%` }}
+                />
+              </div>
+              <span className="hidden shrink-0 font-mono text-xs text-[var(--cockroach)] sm:block sm:w-20">
+                {cockroachSold.toLocaleString("en-IN")}
+              </span>
+            </div>
+
+            <p className="mt-2 text-center text-[10px] uppercase tracking-[0.15em] text-white/35 sm:text-xs">
+              {totalBattleSold.toLocaleString("en-IN")} pixels sold in the war
+            </p>
+          </div>
+
+          {loadError && (
+            <p className="mb-4 text-center text-sm text-red-400" role="alert">
+              {loadError}
+            </p>
+          )}
+
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-5">
+            {heroCenter}
+            <div className="order-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:contents">
+              {renderHeroCanvas("a")}
+              {renderHeroCanvas("b")}
+            </div>
+          </div>
+
+          <div className="mx-auto mt-6 max-w-md">
+            {selected && selectedStatus ? (
+              <PurchasePanel
+                sideLabel={SIDE_INFO[selected.side].label}
+                x={selected.x}
+                y={selected.y}
+                priceLabel={priceLabel}
+                isSold={selectedIsSold}
+                ready={selectedStatus.ready}
+                loading={loadingSide === selected.side}
+                paymentsEnabled={paymentsEnabled}
+                onBuy={handleBuy}
+                onClear={() => {
+                  setSelected(null);
+                  setMessage(null);
+                }}
+              />
+            ) : (
+              <div className="rounded-xl border border-dashed border-white/10 bg-[var(--surface)]/50 p-5 text-center text-sm text-[var(--muted)]">
+                Click a pixel on either canvas to buy and shift the battle.
+              </div>
+            )}
+          </div>
+
+          {message && (
+            <p className="mt-4 text-center text-sm text-[var(--kamal-bright)]" role="status">
+              {message}
+            </p>
+          )}
         </div>
-      )}
+      </section>
 
-      <div className="mb-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-        <button
-          type="button"
-          onClick={() => setBulkOpen(true)}
-          className="rounded-lg bg-[var(--accent)] px-6 py-3 font-semibold text-black transition hover:bg-[var(--accent-dim)]"
-        >
-          Buy pixels
-        </button>
-        <p className="text-sm text-[var(--muted)]">
-          ₹{pricePerPixel} per pixel
-          {paymentsEnabled ? " · Razorpay checkout" : " · demo checkout"}
-        </p>
-      </div>
-
-      <div className="mb-4 h-2 overflow-hidden rounded-full bg-[var(--surface)]">
-        <div
-          className="h-full bg-[var(--accent)] transition-all duration-500"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        {status ? (
-          <PixelGrid
-            width={status.grid.width}
-            height={status.grid.height}
-            soldCount={status.sold}
-            revealedUrl={revealedUrl}
-            selected={selected}
-            selectedIsSold={selectedIsSold}
-            onSelect={(x, y) => {
-              setSelected({ x, y });
-              setMessage(null);
-            }}
-          />
-        ) : (
-          <div className="flex h-[min(70vh,720px)] items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
-            Loading grid…
-          </div>
-        )}
-
-        {selected ? (
-          <PurchasePanel
-            x={selected.x}
-            y={selected.y}
-            priceLabel={priceLabel}
-            isSold={selectedIsSold}
-            ready={status?.ready ?? false}
-            loading={loading}
-            paymentsEnabled={paymentsEnabled}
-            onBuy={handleBuy}
-            onClear={() => {
-              setSelected(null);
-              setMessage(null);
-            }}
-          />
-        ) : (
-          <div className="flex items-center justify-center rounded-xl border border-dashed border-[var(--border)] p-6 text-center text-sm text-[var(--muted)]">
-            Click any pixel on the grid to select it.
-          </div>
-        )}
-      </div>
-
-      {message && (
-        <p className="mt-4 text-center text-sm text-[var(--accent)]" role="status">
-          {message}
-        </p>
-      )}
+      {/* How it works */}
+      <section id="how-it-works" className="border-t border-white/5 bg-black/30 px-4 py-12 sm:px-6 sm:py-16">
+        <div className="mx-auto grid max-w-[1200px] gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map((feature) => (
+            <div key={feature.title} className="feature-card rounded-xl p-5 text-center">
+              <p className="text-2xl">{feature.icon}</p>
+              <h3 className="mt-3 text-sm font-bold uppercase tracking-[0.15em]">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{feature.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <PurchaseReceipt receipt={receipt} onClose={() => setReceipt(null)} />
 
-      <BulkBuyModal
-        open={bulkOpen}
-        pricePerPixelInr={pricePerPixel}
-        maxPixels={Math.min(status?.remaining ?? 0, MAX_BULK_PURCHASE)}
-        ready={status?.ready ?? false}
-        loading={loading}
-        paymentsEnabled={paymentsEnabled}
-        onClose={() => setBulkOpen(false)}
-        onConfirm={handleBulkBuy}
-      />
+      {bulkSide && bulkStatus && (
+        <BulkBuyModal
+          open
+          pricePerPixelInr={bulkStatus.pricePerPixelInr}
+          maxPixels={bulkStatus.remaining}
+          ready={bulkStatus.ready}
+          loading={loadingSide === bulkSide}
+          paymentsEnabled={paymentsEnabled}
+          onClose={() => setBulkOpenForSide(null)}
+          onConfirm={(count) => handleBulkBuy(bulkSide, count)}
+        />
+      )}
 
-      <footer className="mt-12 text-center text-xs text-[var(--muted)]">
-        <Link href="/admin" className="underline hover:text-[var(--text)]">
+      <footer className="border-t border-white/5 py-8 text-center text-xs text-[var(--muted)]">
+        <p className="font-semibold tracking-wide text-white/40">{SITE_NAME}</p>
+        <Link href="/admin" className="mt-2 inline-block underline hover:text-white">
           Admin panel
         </Link>
       </footer>
-    </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-center">
-      <p className="text-xs uppercase tracking-wide text-[var(--muted)]">{label}</p>
-      <p className="mt-1 text-xl font-semibold">{value}</p>
     </div>
   );
 }

@@ -31,6 +31,7 @@ export async function ensureSchema() {
     await db.query(`
       CREATE TABLE IF NOT EXISTS purchases (
         id UUID PRIMARY KEY,
+        side TEXT NOT NULL DEFAULT 'a' CHECK (side IN ('a', 'b')),
         type TEXT NOT NULL CHECK (type IN ('single', 'bulk')),
         purchased_at TIMESTAMPTZ NOT NULL,
         pixel_count INTEGER NOT NULL,
@@ -38,22 +39,32 @@ export async function ensureSchema() {
       );
 
       CREATE TABLE IF NOT EXISTS pixel_sales (
+        side TEXT NOT NULL DEFAULT 'a' CHECK (side IN ('a', 'b')),
         x INTEGER NOT NULL,
         y INTEGER NOT NULL,
         color TEXT NOT NULL,
         purchased_at TIMESTAMPTZ NOT NULL,
         purchase_id UUID NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
-        PRIMARY KEY (x, y)
+        PRIMARY KEY (side, x, y)
       );
 
       CREATE INDEX IF NOT EXISTS idx_pixel_sales_purchase_id ON pixel_sales (purchase_id);
       CREATE INDEX IF NOT EXISTS idx_purchases_purchased_at ON purchases (purchased_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_purchases_side ON purchases (side);
+      CREATE INDEX IF NOT EXISTS idx_pixel_sales_side ON pixel_sales (side);
 
       CREATE TABLE IF NOT EXISTS app_meta (
         key TEXT PRIMARY KEY,
         value JSONB NOT NULL
       );
     `);
+
+    await db.query(`
+      ALTER TABLE purchases ADD COLUMN IF NOT EXISTS side TEXT NOT NULL DEFAULT 'a';
+      ALTER TABLE pixel_sales ADD COLUMN IF NOT EXISTS side TEXT NOT NULL DEFAULT 'a';
+    `).catch(() => {
+      // columns may already exist with constraints
+    });
   })();
 
   return schemaReady;

@@ -1,6 +1,7 @@
 "use client";
 
 type Props = {
+  sideLabel?: string;
   x: number;
   y: number;
   priceLabel: string;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function PurchasePanel({
+  sideLabel,
   x,
   y,
   priceLabel,
@@ -23,9 +25,13 @@ export function PurchasePanel({
   onBuy,
   onClear,
 }: Props) {
+  const isKamal = sideLabel?.toLowerCase().includes("kamal");
+
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-      <p className="text-sm text-[var(--muted)]">Selected pixel</p>
+    <div className="rounded-xl border border-white/10 bg-[var(--surface-elevated)] p-5 shadow-xl">
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+        {sideLabel ? `${sideLabel} · selected pixel` : "Selected pixel"}
+      </p>
       <p className="mt-1 font-mono text-2xl">
         ({x}, {y})
       </p>
@@ -40,7 +46,7 @@ export function PurchasePanel({
         <>
           <p className="mt-4 text-sm text-emerald-400">This pixel is already revealed.</p>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            Its true color is visible on the grid. Pick a dark (hidden) pixel to buy another.
+            Its true color is visible on the grid. Pick a dark pixel to buy another.
           </p>
         </>
       )}
@@ -48,17 +54,28 @@ export function PurchasePanel({
       {ready && !isSold && (
         <>
           <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
-            Buy this pixel to permanently reveal that exact spot on the picture. One pixel, one
-            piece of the image.
+            Buy this pixel to permanently reveal that spot and push your side ahead in the battle.
           </p>
-          <p className="mt-3 text-lg font-semibold text-[var(--accent)]">{priceLabel}</p>
+          <p
+            className={`mt-3 text-lg font-semibold ${isKamal ? "text-[var(--kamal)]" : "text-[var(--cockroach)]"}`}
+          >
+            {priceLabel}
+          </p>
           <button
             type="button"
             disabled={loading}
             onClick={onBuy}
-            className="mt-4 w-full rounded-lg bg-[var(--accent)] px-4 py-3 font-semibold text-black transition hover:bg-[var(--accent-dim)] disabled:opacity-50"
+            className={`mt-4 w-full rounded-lg px-4 py-3 font-bold uppercase tracking-wide transition disabled:opacity-50 ${
+              isKamal
+                ? "war-btn-kamal"
+                : "bg-[var(--cockroach)] text-black hover:brightness-110"
+            }`}
           >
-            {loading ? "Processing…" : paymentsEnabled ? `Pay ${priceLabel}` : `Buy (demo) ${priceLabel}`}
+            {loading
+              ? "Processing…"
+              : paymentsEnabled
+                ? `Pay ${priceLabel}`
+                : `Buy (demo) ${priceLabel}`}
           </button>
         </>
       )}
@@ -66,7 +83,7 @@ export function PurchasePanel({
       <button
         type="button"
         onClick={onClear}
-        className="mt-3 w-full rounded-lg border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)] hover:border-[var(--muted)]"
+        className="mt-3 w-full rounded-lg border border-white/10 px-4 py-2 text-sm text-[var(--muted)] hover:border-white/25 hover:text-white"
       >
         Clear selection
       </button>

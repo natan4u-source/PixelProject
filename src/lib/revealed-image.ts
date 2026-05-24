@@ -1,24 +1,22 @@
 import sharp from "sharp";
 import { promises as fs } from "fs";
-import path from "path";
 import { GRID_HEIGHT, GRID_WIDTH } from "./config";
-import { DATA_DIR } from "./paths";
 import { getPixelColorFromBuffer, loadMasterPixels } from "./image";
+import { revealedImagePath, sideDataDir } from "./paths";
+import type { CanvasSide } from "./sides";
 import type { PixelRecord } from "./store";
 
-export const REVEALED_IMAGE_PATH = path.join(DATA_DIR, "revealed.png");
-
-export async function revealedImageExists() {
+export async function revealedImageExists(side: CanvasSide) {
   try {
-    await fs.access(REVEALED_IMAGE_PATH);
+    await fs.access(revealedImagePath(side));
     return true;
   } catch {
     return false;
   }
 }
 
-async function createTransparentRevealed() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+async function createTransparentRevealed(side: CanvasSide) {
+  await fs.mkdir(sideDataDir(side), { recursive: true });
   await sharp({
     create: {
       width: GRID_WIDTH,
@@ -28,22 +26,20 @@ async function createTransparentRevealed() {
     },
   })
     .png()
-    .toFile(REVEALED_IMAGE_PATH);
+    .toFile(revealedImagePath(side));
 }
 
-export async function paintRevealedPixels(records: PixelRecord[]) {
+export async function paintRevealedPixels(side: CanvasSide, records: PixelRecord[]) {
   if (records.length === 0) return;
 
-  const master = await loadMasterPixels();
+  const master = await loadMasterPixels(side);
+  const imagePath = revealedImagePath(side);
 
-  if (!(await revealedImageExists())) {
-    await createTransparentRevealed();
+  if (!(await revealedImageExists(side))) {
+    await createTransparentRevealed(side);
   }
 
-  const { data, info } = await sharp(REVEALED_IMAGE_PATH)
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(imagePath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 
   for (const { x, y } of records) {
     const color = getPixelColorFromBuffer(master, x, y);
@@ -63,7 +59,7 @@ export async function paintRevealedPixels(records: PixelRecord[]) {
     data[idx + 3] = 255;
   }
 
-  const tmp = `${REVEALED_IMAGE_PATH}.tmp`;
+  const tmp = `${imagePath}.tmp`;
   try {
     await fs.unlink(tmp);
   } catch {
@@ -77,21 +73,22 @@ export async function paintRevealedPixels(records: PixelRecord[]) {
     .toFile(tmp);
 
   try {
-    await fs.rename(tmp, REVEALED_IMAGE_PATH);
+    await fs.rename(tmp, imagePath);
   } catch {
-    await fs.copyFile(tmp, REVEALED_IMAGE_PATH);
+    await fs.copyFile(tmp, imagePath);
     await fs.unlink(tmp);
   }
 }
 
-export async function clearRevealedImage() {
+export async function clearRevealedImage(side: CanvasSide) {
+  const imagePath = revealedImagePath(side);
   try {
-    await fs.unlink(REVEALED_IMAGE_PATH);
+    await fs.unlink(imagePath);
   } catch {
     // none yet
   }
   try {
-    await fs.unlink(`${REVEALED_IMAGE_PATH}.tmp`);
+    await fs.unlink(`${imagePath}.tmp`);
   } catch {
     // none
   }

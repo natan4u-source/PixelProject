@@ -1,14 +1,21 @@
 import { GRID_WIDTH } from "../config";
 import { withRedis } from "./client";
+import type { CanvasSide } from "../sides";
 
-const BITMAP_KEY = "pixel:sold:bitmap";
-const COUNT_KEY = "pixel:sold:count";
+function bitmapKey(side: CanvasSide) {
+  return `pixel:${side}:sold:bitmap`;
+}
+
+function countKey(side: CanvasSide) {
+  return `pixel:${side}:sold:count`;
+}
 
 function pixelIndex(x: number, y: number) {
   return y * GRID_WIDTH + x;
 }
 
 export async function redisMarkPixelsSold(
+  side: CanvasSide,
   coords: { x: number; y: number }[],
   soldCountAfter?: number,
 ) {
@@ -17,47 +24,51 @@ export async function redisMarkPixelsSold(
   await withRedis(async (redis) => {
     const pipeline = redis.pipeline();
     for (const { x, y } of coords) {
-      pipeline.setbit(BITMAP_KEY, pixelIndex(x, y), 1);
+      pipeline.setbit(bitmapKey(side), pixelIndex(x, y), 1);
     }
     if (soldCountAfter !== undefined) {
-      pipeline.set(COUNT_KEY, String(soldCountAfter));
+      pipeline.set(countKey(side), String(soldCountAfter));
     } else {
-      pipeline.incrby(COUNT_KEY, coords.length);
+      pipeline.incrby(countKey(side), coords.length);
     }
     await pipeline.exec();
   });
 }
 
-export async function redisIsPixelSold(x: number, y: number): Promise<boolean | null> {
+export async function redisIsPixelSold(
+  side: CanvasSide,
+  x: number,
+  y: number,
+): Promise<boolean | null> {
   return withRedis(async (redis) => {
-    const bit = await redis.getbit(BITMAP_KEY, pixelIndex(x, y));
+    const bit = await redis.getbit(bitmapKey(side), pixelIndex(x, y));
     return bit === 1;
   });
 }
 
-export async function redisGetSoldCount(): Promise<number | null> {
+export async function redisGetSoldCount(side: CanvasSide): Promise<number | null> {
   return withRedis(async (redis) => {
-    const raw = await redis.get(COUNT_KEY);
+    const raw = await redis.get(countKey(side));
     if (raw === null) return null;
     const count = parseInt(raw, 10);
     return Number.isFinite(count) && count >= 0 ? count : null;
   });
 }
 
-export async function redisSetSoldCount(count: number) {
+export async function redisSetSoldCount(side: CanvasSide, count: number) {
   await withRedis(async (redis) => {
-    await redis.set(COUNT_KEY, String(count));
+    await redis.set(countKey(side), String(count));
   });
 }
 
-export async function redisClearSoldIndex() {
+export async function redisClearSoldIndex(side: CanvasSide) {
   await withRedis(async (redis) => {
-    await redis.del(BITMAP_KEY, COUNT_KEY);
+    await redis.del(bitmapKey(side), countKey(side));
   });
 }
 
-export async function redisSyncBitmapFromBuffer(bitmap: Buffer) {
+export async function redisSyncBitmapFromBuffer(side: CanvasSide, bitmap: Buffer) {
   await withRedis(async (redis) => {
-    await redis.set(BITMAP_KEY, bitmap);
+    await redis.set(bitmapKey(side), bitmap);
   });
 }

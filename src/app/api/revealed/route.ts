@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import { getRevealedCacheMaxAgeSec, isPostgresEnabled } from "@/lib/env";
+import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { ensureSalesMigrated } from "@/lib/migrate-sales";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getRevealedEtag, setRevealedEtag } from "@/lib/cache";
 import { getSoldCountFast } from "@/lib/sales-store";
-import { REVEALED_IMAGE_PATH, revealedImageExists } from "@/lib/revealed-image";
+import { revealedImageExists } from "@/lib/revealed-image";
+import { revealedImagePath } from "@/lib/paths";
+import { sideFromSearchParams } from "@/lib/side-params";
 
 export const dynamic = "force-dynamic";
 
@@ -13,19 +16,32 @@ export async function GET(request: Request) {
   const limit = await rateLimit(request, "revealed", 300, 60);
   if (!limit.allowed) return rateLimitResponse(30);
 
-  if (!isPostgresEnabled()) {
-    await ensureSalesMigrated();
+  await ensureDualSideLayout();
+
+  const url = new URL(request.url);
+  let side;
+  try {
+    side = sideFromSearchParams(url.searchParams);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Invalid side." },
+      { status: 400 },
+    );
   }
 
-  if (!(await revealedImageExists())) {
+  if (!isPostgresEnabled()) {
+    await ensureSalesMigrated(side);
+  }
+
+  if (!(await revealedImageExists(side))) {
     return new NextResponse(null, { status: 404 });
   }
 
-  const sold = await getSoldCountFast();
-  let etag = await getRevealedEtag();
+  const sold = await getSoldCountFast(side);
+  let etag = await getRevealedEtag(side);
   if (!etag) {
-    etag = `"${sold}"`;
-    await setRevealedEtag(etag);
+    etag = `"${side}-${sold}"`;
+    await setRevealedEtag(side, etag);
   }
 
   const ifNoneMatch = request.headers.get("if-none-match");
@@ -39,7 +55,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const buffer = await fs.readFile(REVEALED_IMAGE_PATH);
+  const buffer = await fs.readFile(revealedImagePath(side));
   const maxAge = getRevealedCacheMaxAgeSec();
 
   return new NextResponse(buffer, {

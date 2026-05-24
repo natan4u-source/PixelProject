@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bebas_Neue, Geist, Geist_Mono } from "next/font/google";
+import { SITE_NAME, SITE_URL } from "@/lib/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,9 +13,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const bebas = Bebas_Neue({
+  variable: "--font-bebas",
+  weight: "400",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "Pixel Reveal",
-  description: "Buy a pixel. Reveal one piece of the hidden picture.",
+  title: "KAMAL vs COCKROACH — Live Pixel War",
+  description: "Choose a side. Buy pixels. Reveal the future.",
+  metadataBase: new URL(SITE_URL),
+  openGraph: {
+    title: "KAMAL vs COCKROACH — Live Pixel War",
+    description: "Choose a side. Buy pixels. Reveal the future.",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+  },
 };
 
 export default function RootLayout({
@@ -24,7 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${bebas.variable} antialiased`}>
         {children}
       </body>
     </html>

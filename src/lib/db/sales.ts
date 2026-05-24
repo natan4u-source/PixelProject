@@ -1,27 +1,30 @@
 import { randomUUID } from "crypto";
 import { GRID_HEIGHT, GRID_WIDTH } from "../config";
+import type { CanvasSide } from "../sides";
 import { ensureSchema, getPool } from "./pool";
 import type { PixelRecord } from "../store";
 import type { PurchaseLog, PurchaseType } from "../purchases";
 
-export async function pgGetSoldCount(): Promise<number> {
+export async function pgGetSoldCount(side: CanvasSide): Promise<number> {
   await ensureSchema();
   const { rows } = await getPool().query<{ count: string }>(
-    "SELECT COUNT(*)::text AS count FROM pixel_sales",
+    "SELECT COUNT(*)::text AS count FROM pixel_sales WHERE side = $1",
+    [side],
   );
   return parseInt(rows[0]?.count ?? "0", 10) || 0;
 }
 
-export async function pgIsPixelSold(x: number, y: number): Promise<boolean> {
+export async function pgIsPixelSold(side: CanvasSide, x: number, y: number): Promise<boolean> {
   await ensureSchema();
   const { rows } = await getPool().query<{ exists: boolean }>(
-    "SELECT EXISTS(SELECT 1 FROM pixel_sales WHERE x = $1 AND y = $2) AS exists",
-    [x, y],
+    "SELECT EXISTS(SELECT 1 FROM pixel_sales WHERE side = $1 AND x = $2 AND y = $3) AS exists",
+    [side, x, y],
   );
   return Boolean(rows[0]?.exists);
 }
 
 export async function pgInsertPurchase(
+  side: CanvasSide,
   type: PurchaseType,
   pixels: PixelRecord[],
   totalInr: number,
@@ -34,16 +37,16 @@ export async function pgInsertPurchase(
   try {
     await client.query("BEGIN");
     await client.query(
-      `INSERT INTO purchases (id, type, purchased_at, pixel_count, total_inr)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [id, type, purchasedAt, pixels.length, totalInr],
+      `INSERT INTO purchases (id, side, type, purchased_at, pixel_count, total_inr)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [id, side, type, purchasedAt, pixels.length, totalInr],
     );
 
     for (const pixel of pixels) {
       await client.query(
-        `INSERT INTO pixel_sales (x, y, color, purchased_at, purchase_id)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [pixel.x, pixel.y, pixel.color, pixel.purchasedAt, id],
+        `INSERT INTO pixel_sales (side, x, y, color, purchased_at, purchase_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [side, pixel.x, pixel.y, pixel.color, pixel.purchasedAt, id],
       );
     }
 
@@ -73,12 +76,16 @@ export async function pgInsertPurchase(
   }
 }
 
-export async function pgReadPurchases(options: { limit: number; offset: number }) {
+export async function pgReadPurchases(
+  side: CanvasSide,
+  options: { limit: number; offset: number },
+) {
   await ensureSchema();
   const db = getPool();
 
   const totalResult = await db.query<{ count: string }>(
-    "SELECT COUNT(*)::text AS count FROM purchases",
+    "SELECT COUNT(*)::text AS count FROM purchases WHERE side = $1",
+    [side],
   );
   const total = parseInt(totalResult.rows[0]?.count ?? "0", 10) || 0;
 
@@ -91,9 +98,10 @@ export async function pgReadPurchases(options: { limit: number; offset: number }
   }>(
     `SELECT id, type, purchased_at, pixel_count, total_inr
      FROM purchases
+     WHERE side = $1
      ORDER BY purchased_at DESC
-     LIMIT $1 OFFSET $2`,
-    [options.limit, options.offset],
+     LIMIT $2 OFFSET $3`,
+    [side, options.limit, options.offset],
   );
 
   const purchases: PurchaseLog[] = [];
@@ -120,12 +128,15 @@ export async function pgReadPurchases(options: { limit: number; offset: number }
   };
 }
 
-export async function pgClearAllSales() {
+export async function pgClearAllSales(side: CanvasSide) {
   await ensureSchema();
-  await getPool().query("TRUNCATE pixel_sales, purchases RESTART IDENTITY CASCADE");
+  await getPool().query("DELETE FROM purchases WHERE side = $1", [side]);
 }
 
-export async function pgPickRandomUnsoldPixels(count: number): Promise<{ x: number; y: number }[]> {
+export async function pgPickRandomUnsoldPixels(
+  side: CanvasSide,
+  count: number,
+): Promise<{ x: number; y: number }[]> {
   await ensureSchema();
   const picked: { x: number; y: number }[] = [];
   const pickedKeys = new Set<string>();
@@ -139,8 +150,8 @@ export async function pgPickRandomUnsoldPixels(count: number): Promise<{ x: numb
     if (pickedKeys.has(key)) continue;
 
     const { rows } = await db.query<{ exists: boolean }>(
-      "SELECT EXISTS(SELECT 1 FROM pixel_sales WHERE x = $1 AND y = $2) AS exists",
-      [x, y],
+      "SELECT EXISTS(SELECT 1 FROM pixel_sales WHERE side = $1 AND x = $2 AND y = $3) AS exists",
+      [side, x, y],
     );
     if (rows[0]?.exists) continue;
 
@@ -151,23 +162,29 @@ export async function pgPickRandomUnsoldPixels(count: number): Promise<{ x: numb
   return picked;
 }
 
-export async function pgWriteMeta(meta: { width: number; height: number; uploadedAt: string }) {
+export async function pgWriteMeta(
+  side: CanvasSide,
+  meta: { width: number; height: number; uploadedAt: string },
+) {
   await ensureSchema();
   await getPool().query(
-    `INSERT INTO app_meta (key, value) VALUES ('grid', $1::jsonb)
+    `INSERT INTO app_meta (key, value) VALUES ($1, $2::jsonb)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-    [JSON.stringify(meta)],
+    [`grid:${side}`, JSON.stringify(meta)],
   );
 }
 
-export async function pgReadMeta(): Promise<{
+export async function pgReadMeta(
+  side: CanvasSide,
+): Promise<{
   width: number;
   height: number;
   uploadedAt: string;
 } | null> {
   await ensureSchema();
   const { rows } = await getPool().query<{ value: { width: number; height: number; uploadedAt: string } }>(
-    "SELECT value FROM app_meta WHERE key = 'grid'",
+    "SELECT value FROM app_meta WHERE key = $1",
+    [`grid:${side}`],
   );
   return rows[0]?.value ?? null;
 }

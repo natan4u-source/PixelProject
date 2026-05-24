@@ -1,16 +1,16 @@
 import { promises as fs } from "fs";
+import { ensureDualSideLayout } from "./layout-migrate";
 import { isPostgresEnabled } from "./env";
 import { pgReadMeta, pgWriteMeta } from "./db/sales";
 import {
-  DATA_DIR,
-  LEGACY_MASTER_IMAGE_PATH,
-  MASTER_VAULT_PATH,
-  META_PATH,
-  PIXELS_BACKUP_PATH,
-  PIXELS_PATH,
-  PURCHASES_LOG_PATH,
-  SALES_LOG_PATH,
+  metaPath,
+  pixelsBackupPath,
+  pixelsPath,
+  purchasesLogPath,
+  salesLogPath,
+  sideDataDir,
 } from "./paths";
+import type { CanvasSide } from "./sides";
 
 export type PixelRecord = {
   x: number;
@@ -27,19 +27,20 @@ export type Meta = {
 
 export type PixelsFile = Record<string, PixelRecord>;
 
-async function ensureDataDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+async function ensureSideDir(side: CanvasSide) {
+  await ensureDualSideLayout();
+  await fs.mkdir(sideDataDir(side), { recursive: true });
 }
 
 export function pixelKey(x: number, y: number) {
   return `${x},${y}`;
 }
 
-async function rebuildFromSalesLog(): Promise<PixelsFile> {
+async function rebuildFromSalesLog(side: CanvasSide): Promise<PixelsFile> {
   const pixels: PixelsFile = {};
 
   try {
-    const raw = await fs.readFile(SALES_LOG_PATH, "utf8");
+    const raw = await fs.readFile(salesLogPath(side), "utf8");
     for (const line of raw.split("\n")) {
       if (!line.trim()) continue;
       const record = JSON.parse(line) as PixelRecord;
@@ -50,7 +51,7 @@ async function rebuildFromSalesLog(): Promise<PixelsFile> {
   }
 
   if (Object.keys(pixels).length > 0) {
-    await writePixels(pixels);
+    await writePixels(side, pixels);
   }
 
   return pixels;
@@ -66,76 +67,80 @@ async function readPixelsFile(filePath: string): Promise<PixelsFile | null> {
   }
 }
 
-async function ensureSalesLogFromPixels(pixels: PixelsFile) {
+async function ensureSalesLogFromPixels(side: CanvasSide, pixels: PixelsFile) {
   try {
-    await fs.access(SALES_LOG_PATH);
+    await fs.access(salesLogPath(side));
   } catch {
-    await appendSales(Object.values(pixels));
+    await appendSales(side, Object.values(pixels));
   }
 }
 
-export async function readPixels(): Promise<PixelsFile> {
-  const main = await readPixelsFile(PIXELS_PATH);
+export async function readPixels(side: CanvasSide): Promise<PixelsFile> {
+  const mainPath = pixelsPath(side);
+  const backupPath = pixelsBackupPath(side);
+
+  const main = await readPixelsFile(mainPath);
   if (main !== null) {
     if (Object.keys(main).length > 0) {
-      await ensureSalesLogFromPixels(main);
+      await ensureSalesLogFromPixels(side, main);
     }
     return main;
   }
 
-  const backup = await readPixelsFile(PIXELS_BACKUP_PATH);
+  const backup = await readPixelsFile(backupPath);
   if (backup !== null) {
-    await writePixels(backup);
+    await writePixels(side, backup);
     if (Object.keys(backup).length > 0) {
-      await ensureSalesLogFromPixels(backup);
+      await ensureSalesLogFromPixels(side, backup);
     }
     return backup;
   }
 
-  return rebuildFromSalesLog();
+  return rebuildFromSalesLog(side);
 }
 
-export async function writePixels(pixels: PixelsFile) {
-  await ensureDataDir();
+export async function writePixels(side: CanvasSide, pixels: PixelsFile) {
+  await ensureSideDir(side);
+  const mainPath = pixelsPath(side);
+  const backupPath = pixelsBackupPath(side);
   const content = JSON.stringify(pixels);
 
-  const tmpPath = `${PIXELS_PATH}.tmp`;
+  const tmpPath = `${mainPath}.tmp`;
   await fs.writeFile(tmpPath, content, "utf8");
-  await fs.writeFile(PIXELS_BACKUP_PATH, content, "utf8");
-  await fs.rename(tmpPath, PIXELS_PATH);
+  await fs.writeFile(backupPath, content, "utf8");
+  await fs.rename(tmpPath, mainPath);
 }
 
 /** Append-only log so sales survive crashes and are easy to rebuild from. */
-export async function appendSales(records: PixelRecord[]) {
+export async function appendSales(side: CanvasSide, records: PixelRecord[]) {
   if (records.length === 0) return;
-  await ensureDataDir();
+  await ensureSideDir(side);
   const chunk = records.map((r) => JSON.stringify(r)).join("\n") + "\n";
-  await fs.appendFile(SALES_LOG_PATH, chunk, "utf8");
+  await fs.appendFile(salesLogPath(side), chunk, "utf8");
 }
 
-export async function clearAllSalesFiles() {
-  await ensureDataDir();
+export async function clearAllSalesFiles(side: CanvasSide) {
+  await ensureSideDir(side);
   const { createEmptyBitmap, saveSoldBitmap } = await import("./sold-bitmap");
   const { clearRevealedImage } = await import("./revealed-image");
   const { resetSalesRuntimeCache, setSoldCount } = await import("./migrate-sales");
-  const pathMod = await import("path");
-  const { DATA_DIR } = await import("./paths");
 
-  resetSalesRuntimeCache();
-  await clearRevealedImage();
+  resetSalesRuntimeCache(side);
+
+  await clearRevealedImage(side);
 
   for (const file of [
-    PIXELS_PATH,
-    PIXELS_BACKUP_PATH,
-    SALES_LOG_PATH,
-    PURCHASES_LOG_PATH,
-    `${PIXELS_PATH}.tmp`,
-    pathMod.join(DATA_DIR, "sold.bitmap"),
-    pathMod.join(DATA_DIR, "sold.bitmap.tmp"),
-    pathMod.join(DATA_DIR, "revealed.png"),
-    pathMod.join(DATA_DIR, "revealed.png.tmp"),
-    pathMod.join(DATA_DIR, ".migrated"),
-    pathMod.join(DATA_DIR, "sold.count"),
+    pixelsPath(side),
+    pixelsBackupPath(side),
+    salesLogPath(side),
+    purchasesLogPath(side),
+    `${pixelsPath(side)}.tmp`,
+    `${sideDataDir(side)}/sold.bitmap`,
+    `${sideDataDir(side)}/sold.bitmap.tmp`,
+    `${sideDataDir(side)}/revealed.png`,
+    `${sideDataDir(side)}/revealed.png.tmp`,
+    `${sideDataDir(side)}/.migrated`,
+    `${sideDataDir(side)}/sold.count`,
   ]) {
     try {
       await fs.unlink(file);
@@ -144,44 +149,34 @@ export async function clearAllSalesFiles() {
     }
   }
 
-  await saveSoldBitmap(createEmptyBitmap());
-  await setSoldCount(0);
+  await saveSoldBitmap(side, createEmptyBitmap());
+  await setSoldCount(side, 0);
 }
 
-export async function clearAllSales() {
+export async function clearAllSales(side: CanvasSide) {
   const { clearAllSalesEverywhere } = await import("./sales-store");
-  await clearAllSalesEverywhere();
+  await clearAllSalesEverywhere(side);
 }
 
-export async function readMeta(): Promise<Meta | null> {
+export async function readMeta(side: CanvasSide): Promise<Meta | null> {
   if (isPostgresEnabled()) {
-    return pgReadMeta();
+    return pgReadMeta(side);
   }
 
   try {
-    const raw = await fs.readFile(META_PATH, "utf8");
+    const raw = await fs.readFile(metaPath(side), "utf8");
     return JSON.parse(raw) as Meta;
   } catch {
     return null;
   }
 }
 
-export async function writeMeta(meta: Meta) {
+export async function writeMeta(side: CanvasSide, meta: Meta) {
   if (isPostgresEnabled()) {
-    await pgWriteMeta(meta);
+    await pgWriteMeta(side, meta);
   }
-  await ensureDataDir();
-  await fs.writeFile(META_PATH, JSON.stringify(meta, null, 2));
+  await ensureSideDir(side);
+  await fs.writeFile(metaPath(side), JSON.stringify(meta, null, 2));
 }
 
-export async function masterImageExists() {
-  for (const filePath of [MASTER_VAULT_PATH, LEGACY_MASTER_IMAGE_PATH]) {
-    try {
-      await fs.access(filePath);
-      return true;
-    } catch {
-      // try next
-    }
-  }
-  return false;
-}
+export { masterImageExists } from "./image";

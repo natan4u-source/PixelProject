@@ -7,11 +7,12 @@ import {
   isPngBuffer,
 } from "./master-vault";
 import {
-  DATA_DIR,
-  LEGACY_MASTER_IMAGE_PATH,
-  MASTER_VAULT_PATH,
+  legacyMasterImagePath,
+  masterVaultPath,
+  sideDataDir,
 } from "./paths";
-import { writeMeta } from "./store";
+import type { CanvasSide } from "./sides";
+import { writeMeta, type Meta } from "./store";
 
 export type MasterPixelBuffer = {
   data: Buffer;
@@ -20,95 +21,100 @@ export type MasterPixelBuffer = {
   channels: number;
 };
 
-let cachedPixels: MasterPixelBuffer | null = null;
-let cachedVaultMtimeMs = 0;
+const cachedPixels = new Map<CanvasSide, MasterPixelBuffer>();
+const cachedVaultMtime = new Map<CanvasSide, number>();
 
-async function readMasterPngBytes(): Promise<Buffer> {
+async function readMasterPngBytes(side: CanvasSide): Promise<Buffer> {
+  const vaultPath = masterVaultPath(side);
   try {
-    const vault = await fs.readFile(MASTER_VAULT_PATH);
+    const vault = await fs.readFile(vaultPath);
     return decryptMasterVault(vault);
   } catch {
     // Fall through to legacy migration.
   }
 
   try {
-    const legacy = await fs.readFile(LEGACY_MASTER_IMAGE_PATH);
+    const legacyPath = legacyMasterImagePath(side);
+    const legacy = await fs.readFile(legacyPath);
     if (!isPngBuffer(legacy)) {
       throw new Error("Legacy master image is not a PNG.");
     }
 
-    await writeEncryptedMaster(legacy);
+    await writeEncryptedMaster(side, legacy);
     return legacy;
   } catch {
     throw new Error("Hidden image not found.");
   }
 }
 
-async function writeEncryptedMaster(pngBuffer: Buffer) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+async function writeEncryptedMaster(side: CanvasSide, pngBuffer: Buffer) {
+  await fs.mkdir(sideDataDir(side), { recursive: true });
+  const vaultPath = masterVaultPath(side);
   const encrypted = encryptMasterPng(pngBuffer);
-  const tmp = `${MASTER_VAULT_PATH}.tmp`;
+  const tmp = `${vaultPath}.tmp`;
   await fs.writeFile(tmp, encrypted);
-  await fs.rename(tmp, MASTER_VAULT_PATH);
+  await fs.rename(tmp, vaultPath);
 
   try {
-    await fs.unlink(LEGACY_MASTER_IMAGE_PATH);
+    await fs.unlink(legacyMasterImagePath(side));
   } catch {
     // already migrated
   }
 
-  cachedPixels = null;
-  cachedVaultMtimeMs = 0;
+  cachedPixels.delete(side);
+  cachedVaultMtime.delete(side);
 }
 
-export async function saveMasterImage(buffer: Buffer) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+export async function saveMasterImage(side: CanvasSide, buffer: Buffer) {
+  await fs.mkdir(sideDataDir(side), { recursive: true });
 
   const pngBuffer = await sharp(buffer)
     .resize(GRID_WIDTH, GRID_HEIGHT, { fit: "fill" })
     .png()
     .toBuffer();
 
-  await writeEncryptedMaster(pngBuffer);
+  await writeEncryptedMaster(side, pngBuffer);
 
-  await writeMeta({
+  const meta: Meta = {
     width: GRID_WIDTH,
     height: GRID_HEIGHT,
     uploadedAt: new Date().toISOString(),
-  });
+  };
+  await writeMeta(side, meta);
 }
 
-export async function loadMasterPixels(): Promise<MasterPixelBuffer> {
+export async function loadMasterPixels(side: CanvasSide): Promise<MasterPixelBuffer> {
+  const vaultPath = masterVaultPath(side);
   let mtimeMs = 0;
   try {
-    mtimeMs = (await fs.stat(MASTER_VAULT_PATH)).mtimeMs;
+    mtimeMs = (await fs.stat(vaultPath)).mtimeMs;
   } catch {
     try {
-      mtimeMs = (await fs.stat(LEGACY_MASTER_IMAGE_PATH)).mtimeMs;
+      mtimeMs = (await fs.stat(legacyMasterImagePath(side))).mtimeMs;
     } catch {
       throw new Error("Hidden image not found.");
     }
   }
 
-  if (cachedPixels && cachedVaultMtimeMs === mtimeMs) {
-    return cachedPixels;
+  const cached = cachedPixels.get(side);
+  const cachedMtime = cachedVaultMtime.get(side);
+  if (cached && cachedMtime === mtimeMs) {
+    return cached;
   }
 
-  const pngBuffer = await readMasterPngBytes();
-  const { data, info } = await sharp(pngBuffer)
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  const pngBuffer = await readMasterPngBytes(side);
+  const { data, info } = await sharp(pngBuffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 
-  cachedPixels = {
+  const pixels: MasterPixelBuffer = {
     data,
     width: info.width,
     height: info.height,
     channels: info.channels,
   };
-  cachedVaultMtimeMs = mtimeMs;
+  cachedPixels.set(side, pixels);
+  cachedVaultMtime.set(side, mtimeMs);
 
-  return cachedPixels;
+  return pixels;
 }
 
 export function getPixelColorFromBuffer(
@@ -127,4 +133,16 @@ export function getPixelColorFromBuffer(
   }
 
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+export async function masterImageExists(side: CanvasSide) {
+  for (const filePath of [masterVaultPath(side), legacyMasterImagePath(side)]) {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      // try next
+    }
+  }
+  return false;
 }

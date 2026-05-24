@@ -2,11 +2,13 @@ import { promises as fs } from "fs";
 import { randomUUID } from "crypto";
 import type { PurchaseResult } from "./purchase";
 import { DATA_DIR, PAYMENT_ORDERS_PATH } from "./paths";
+import type { CanvasSide } from "./sides";
 
 export type PaymentOrderStatus = "created" | "paid" | "failed";
 
 export type PaymentOrderRecord = {
   id: string;
+  side?: CanvasSide;
   razorpayOrderId: string;
   type: "single" | "bulk";
   x?: number;
@@ -46,6 +48,7 @@ export async function savePaymentOrder(
   const store = await readStore();
   const record: PaymentOrderRecord = {
     id: input.id ?? randomUUID(),
+    side: input.side,
     razorpayOrderId: input.razorpayOrderId,
     type: input.type,
     x: input.x,

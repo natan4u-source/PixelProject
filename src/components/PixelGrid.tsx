@@ -8,6 +8,8 @@ type Props = {
   soldCount: number;
   revealedUrl: string | null;
   hiddenColor?: string;
+  containerClassName?: string;
+  resetViewAtBottom?: boolean;
   onSelect: (x: number, y: number) => void;
   selected: { x: number; y: number } | null;
   selectedIsSold?: boolean;
@@ -19,6 +21,8 @@ export function PixelGrid({
   soldCount,
   revealedUrl,
   hiddenColor = "#1c1c28",
+  containerClassName,
+  resetViewAtBottom = false,
   onSelect,
   selected,
   selectedIsSold = false,
@@ -163,7 +167,10 @@ export function PixelGrid({
   return (
     <div
       ref={containerRef}
-      className="relative h-[min(70vh,720px)] w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+      className={
+        containerClassName ??
+        "relative h-[min(55vh,640px)] w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+      }
     >
       <canvas
         ref={canvasRef}
@@ -181,7 +188,9 @@ export function PixelGrid({
       <button
         type="button"
         onClick={fitToView}
-        className="absolute right-3 top-3 rounded-md border border-[var(--border)] bg-black/60 px-2 py-1 text-xs hover:bg-black/80"
+        className={`absolute rounded-md border border-[var(--border)] bg-black/60 px-2 py-1 text-xs hover:bg-black/80 ${
+          resetViewAtBottom ? "bottom-3 right-3" : "right-3 top-3"
+        }`}
       >
         Reset view
       </button>

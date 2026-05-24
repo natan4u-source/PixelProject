@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { CANVAS_SIDES, DEFAULT_SIDE, SIDE_INFO, type CanvasSide } from "@/lib/sides";
 
 type AdminStats = {
   grid: { width: number; height: number };
@@ -50,6 +51,8 @@ const SECRET_KEY = "pixel-admin-secret";
 const PAGE_SIZE = 15;
 
 export default function AdminPage() {
+  const [activeSide, setActiveSide] = useState<CanvasSide>(DEFAULT_SIDE);
+  const [sideStats, setSideStats] = useState<Record<CanvasSide, AdminStats> | null>(null);
   const [secret, setSecret] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -71,23 +74,38 @@ export default function AdminPage() {
     if (saved) setSecret(saved);
   }, []);
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (side: CanvasSide = activeSide) => {
     if (!secret) return;
     setStatsLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/admin/stats?t=${Date.now()}`, {
-        headers: { "x-admin-secret": secret },
-        cache: "no-store",
-      });
-      const data = await res.json();
-      if (!res.ok) {
+      const [sideRes, allRes] = await Promise.all([
+        fetch(`/api/admin/stats?side=${side}&t=${Date.now()}`, {
+          headers: { "x-admin-secret": secret },
+          cache: "no-store",
+        }),
+        fetch(`/api/admin/stats?all=true&t=${Date.now()}`, {
+          headers: { "x-admin-secret": secret },
+          cache: "no-store",
+        }),
+      ]);
+
+      const data = await sideRes.json();
+      if (!sideRes.ok) {
         setStats(null);
         setError(data.error ?? "Could not load stats. Check your admin secret.");
         return;
       }
       setStats(data);
+
+      if (allRes.ok) {
+        const allData = await allRes.json();
+        if (allData.sides) {
+          setSideStats(allData.sides);
+        }
+      }
+
       sessionStorage.setItem(SECRET_KEY, secret);
     } catch {
       setError("Could not reach the server.");
@@ -95,7 +113,7 @@ export default function AdminPage() {
     } finally {
       setStatsLoading(false);
     }
-  }, [secret]);
+  }, [secret, activeSide]);
 
   const loadAnalytics = useCallback(async () => {
     if (!secret) return;
@@ -120,13 +138,13 @@ export default function AdminPage() {
   }, [secret]);
 
   const loadPurchases = useCallback(
-    async (offset = 0, append = false) => {
+    async (offset = 0, append = false, side: CanvasSide = activeSide) => {
       if (!secret) return;
       setPurchasesLoading(true);
 
       try {
         const res = await fetch(
-          `/api/admin/purchases?limit=${PAGE_SIZE}&offset=${offset}&t=${Date.now()}`,
+          `/api/admin/purchases?side=${side}&limit=${PAGE_SIZE}&offset=${offset}&t=${Date.now()}`,
           {
             headers: { "x-admin-secret": secret },
             cache: "no-store",
@@ -145,7 +163,7 @@ export default function AdminPage() {
         setPurchasesLoading(false);
       }
     },
-    [secret],
+    [secret, activeSide],
   );
 
   const refreshAll = useCallback(async () => {
@@ -157,11 +175,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (secret) {
-      loadStats();
+      loadStats(activeSide);
       loadAnalytics();
-      loadPurchases(0, false);
+      loadPurchases(0, false, activeSide);
     }
-  }, [secret, loadStats, loadAnalytics, loadPurchases]);
+  }, [secret, activeSide, loadStats, loadAnalytics, loadPurchases]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,7 +196,7 @@ export default function AdminPage() {
     const form = new FormData();
     form.append("image", file);
 
-    const res = await fetch("/api/admin/master", {
+    const res = await fetch(`/api/admin/master?side=${activeSide}`, {
       method: "POST",
       headers: { "x-admin-secret": secret },
       body: form,
@@ -204,7 +222,7 @@ export default function AdminPage() {
     }
 
     const confirmed = window.confirm(
-      "Reset the grid? This clears all sold pixels and purchase history. Your hidden image stays the same.",
+      `Reset ${SIDE_INFO[activeSide].label}? This clears all sold pixels and purchase history on that side. The hidden image stays the same.`,
     );
     if (!confirmed) return;
 
@@ -212,7 +230,7 @@ export default function AdminPage() {
     setMessage(null);
     setError(null);
 
-    const res = await fetch("/api/admin/reset-grid", {
+    const res = await fetch(`/api/admin/reset-grid?side=${activeSide}`, {
       method: "POST",
       headers: { "x-admin-secret": secret },
     });
@@ -237,8 +255,40 @@ export default function AdminPage() {
 
       <h1 className="mt-6 text-3xl font-bold">Admin panel</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">
-        View sales, purchase history, upload the hidden image, or reset the grid.
+        Manage Side A and Side B separately — each has its own hidden image, sales, and purchase
+        history.
       </p>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        {CANVAS_SIDES.map((side) => {
+          const info = SIDE_INFO[side];
+          const summary = sideStats?.[side];
+          const isActive = activeSide === side;
+          return (
+            <button
+              key={side}
+              type="button"
+              onClick={() => {
+                setActiveSide(side);
+                setExpandedId(null);
+              }}
+              className={`rounded-xl border px-4 py-3 text-left transition ${
+                isActive
+                  ? "border-[var(--accent)] bg-[var(--accent)]/10"
+                  : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--muted)]"
+              }`}
+            >
+              <p className="font-semibold">{info.label}</p>
+              {summary && (
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {summary.sold.toLocaleString("en-IN")} sold ·{" "}
+                  {summary.imageReady ? "image ready" : "no image yet"}
+                </p>
+              )}
+            </button>
+          );
+        })}
+      </div>
 
       <section className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <label className="block">
@@ -269,7 +319,7 @@ export default function AdminPage() {
 
       {stats && (
         <section className="mt-6 space-y-4">
-          <h2 className="text-lg font-semibold">Sales overview</h2>
+          <h2 className="text-lg font-semibold">{SIDE_INFO[activeSide].label} — sales overview</h2>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <StatCard label="Pixels bought" value={stats.sold.toLocaleString("en-IN")} highlight />
@@ -369,10 +419,10 @@ export default function AdminPage() {
       )}
 
       <section className="mt-8 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <h2 className="text-lg font-semibold">Reset grid</h2>
+        <h2 className="text-lg font-semibold">Reset {SIDE_INFO[activeSide].label}</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Hide all revealed pixels again and wipe purchase history. Does not change your uploaded
-          hidden image.
+          Hide all revealed pixels on this side and wipe its purchase history. Does not change the
+          hidden image for this side.
         </p>
         <button
           type="button"
@@ -380,14 +430,14 @@ export default function AdminPage() {
           disabled={loading || !secret || (stats?.sold ?? 0) === 0}
           className="mt-4 w-full rounded-lg border border-red-500/50 bg-red-500/10 py-3 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
         >
-          {loading ? "Working…" : "Reset grid"}
+          {loading ? "Working…" : `Reset ${SIDE_INFO[activeSide].label}`}
         </button>
       </section>
 
       {secret && (
         <section className="mt-10 space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Purchase history</h2>
+            <h2 className="text-lg font-semibold">{SIDE_INFO[activeSide].label} purchase history</h2>
             <span className="text-sm text-[var(--muted)]">
               {purchaseTotal.toLocaleString("en-IN")} transaction(s)
             </span>
@@ -426,9 +476,10 @@ export default function AdminPage() {
       )}
 
       <section className="mt-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <h2 className="text-lg font-semibold">Upload hidden image</h2>
+        <h2 className="text-lg font-semibold">Upload hidden image — {SIDE_INFO[activeSide].label}</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Resizes to 1000×1000. To start fresh, use Reset grid separately.
+          Resizes to 1000×1000 for {SIDE_INFO[activeSide].label}. To start fresh sales, use Reset
+          separately.
         </p>
 
         <form onSubmit={handleUpload} className="mt-5 space-y-4">

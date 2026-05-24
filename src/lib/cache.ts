@@ -1,8 +1,14 @@
 import { withRedis } from "./redis/client";
 import { getStatusCacheTtlSec } from "./env";
+import type { CanvasSide } from "./sides";
 
-const STATUS_KEY = "cache:status:json";
-const REVEALED_ETAG_KEY = "cache:revealed:etag";
+function statusKey(side: CanvasSide) {
+  return `cache:status:${side}:json`;
+}
+
+function revealedEtagKey(side: CanvasSide) {
+  return `cache:revealed:${side}:etag`;
+}
 
 type MemoryEntry = { value: string; expiresAt: number };
 const memoryCache = new Map<string, MemoryEntry>();
@@ -25,42 +31,54 @@ function memoryDel(key: string) {
   memoryCache.delete(key);
 }
 
-export async function getCachedStatus(): Promise<string | null> {
-  const redisValue = await withRedis(async (redis) => redis.get(STATUS_KEY));
+export async function getCachedStatus(side: CanvasSide): Promise<string | null> {
+  const key = statusKey(side);
+  const redisValue = await withRedis(async (redis) => redis.get(key));
   if (redisValue) return redisValue;
-  return memoryGet(STATUS_KEY);
+  return memoryGet(key);
 }
 
-export async function setCachedStatus(json: string, ttlSec = getStatusCacheTtlSec()) {
+export async function setCachedStatus(side: CanvasSide, json: string, ttlSec = getStatusCacheTtlSec()) {
+  const key = statusKey(side);
   await withRedis(async (redis) => {
-    await redis.set(STATUS_KEY, json, "EX", ttlSec);
+    await redis.set(key, json, "EX", ttlSec);
   });
-  memorySet(STATUS_KEY, json, ttlSec);
+  memorySet(key, json, ttlSec);
 }
 
-export async function invalidateStatusCache() {
-  await withRedis(async (redis) => {
-    await redis.del(STATUS_KEY);
-  });
-  memoryDel(STATUS_KEY);
+export async function invalidateStatusCache(side?: CanvasSide) {
+  if (side) {
+    const key = statusKey(side);
+    await withRedis(async (redis) => {
+      await redis.del(key);
+    });
+    memoryDel(key);
+    return;
+  }
+
+  for (const s of ["a", "b"] as const) {
+    await invalidateStatusCache(s);
+  }
 }
 
-export async function getRevealedEtag(): Promise<string | null> {
-  const redisValue = await withRedis(async (redis) => redis.get(REVEALED_ETAG_KEY));
+export async function getRevealedEtag(side: CanvasSide): Promise<string | null> {
+  const key = revealedEtagKey(side);
+  const redisValue = await withRedis(async (redis) => redis.get(key));
   if (redisValue) return redisValue;
-  return memoryGet(REVEALED_ETAG_KEY);
+  return memoryGet(key);
 }
 
-export async function setRevealedEtag(etag: string) {
+export async function setRevealedEtag(side: CanvasSide, etag: string) {
+  const key = revealedEtagKey(side);
   await withRedis(async (redis) => {
-    await redis.set(REVEALED_ETAG_KEY, etag);
+    await redis.set(key, etag);
   });
-  memorySet(REVEALED_ETAG_KEY, etag, 86_400);
+  memorySet(key, etag, 86_400);
 }
 
-export async function bumpRevealedEtag(soldCount: number) {
+export async function bumpRevealedEtag(side: CanvasSide, soldCount: number) {
   const etag = `"${soldCount}-${Date.now()}"`;
-  await setRevealedEtag(etag);
-  await invalidateStatusCache();
+  await setRevealedEtag(side, etag);
+  await invalidateStatusCache(side);
   return etag;
 }

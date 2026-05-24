@@ -1,8 +1,16 @@
 import { createReadStream, type ReadStream } from "fs";
 import { createInterface } from "readline";
-import { GRID_HEIGHT, GRID_WIDTH } from "./config";
-import { PIXELS_PATH, SALES_LOG_PATH } from "./paths";
 import { promises as fs } from "fs";
+import { GRID_HEIGHT, GRID_WIDTH } from "./config";
+import { ensureDualSideLayout } from "./layout-migrate";
+import {
+  migratedFlagPath,
+  pixelsPath,
+  salesLogPath,
+  sideDataDir,
+  soldBitmapPath,
+  soldCountPath,
+} from "./paths";
 import { paintRevealedPixels } from "./revealed-image";
 import {
   BITMAP_BYTE_SIZE,
@@ -15,20 +23,21 @@ import {
   saveSoldBitmap,
   TOTAL_PIXELS,
 } from "./sold-bitmap";
-import path from "path";
-import { DATA_DIR } from "./paths";
+import type { CanvasSide } from "./sides";
 import type { PixelRecord } from "./store";
 
-const BITMAP_PATH = path.join(DATA_DIR, "sold.bitmap");
-const MIGRATED_FLAG = path.join(DATA_DIR, ".migrated");
-const SOLD_COUNT_PATH = path.join(DATA_DIR, "sold.count");
+const migrationPromises = new Map<CanvasSide, Promise<void>>();
+const repairPromises = new Map<CanvasSide, Promise<void>>();
 
-let migrationPromise: Promise<void> | null = null;
-let repairPromise: Promise<void> | null = null;
-
-export function resetSalesRuntimeCache() {
-  migrationPromise = null;
-  repairPromise = null;
+export function resetSalesRuntimeCache(side?: CanvasSide) {
+  if (side) {
+    migrationPromises.delete(side);
+    repairPromises.delete(side);
+    invalidateBitmapCache(side);
+    return;
+  }
+  migrationPromises.clear();
+  repairPromises.clear();
   invalidateBitmapCache();
 }
 
@@ -46,18 +55,19 @@ async function streamNdjson(
   }
 }
 
-export async function setSoldCount(count: number) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(SOLD_COUNT_PATH, String(count), "utf8");
+export async function setSoldCount(side: CanvasSide, count: number) {
+  await ensureDualSideLayout();
+  await fs.mkdir(sideDataDir(side), { recursive: true });
+  await fs.writeFile(soldCountPath(side), String(count), "utf8");
 }
 
-export async function rebuildSoldBitmapFromSalesLog() {
-  invalidateBitmapCache();
+export async function rebuildSoldBitmapFromSalesLog(side: CanvasSide) {
+  invalidateBitmapCache(side);
   const bitmap = createEmptyBitmap();
   let count = 0;
 
   try {
-    await streamNdjson(SALES_LOG_PATH, (record) => {
+    await streamNdjson(salesLogPath(side), (record) => {
       if (
         Number.isInteger(record.x) &&
         Number.isInteger(record.y) &&
@@ -73,22 +83,26 @@ export async function rebuildSoldBitmapFromSalesLog() {
       }
     });
   } catch {
-    await saveSoldBitmap(bitmap);
-    await setSoldCount(0);
+    await saveSoldBitmap(side, bitmap);
+    await setSoldCount(side, 0);
     return;
   }
 
-  await saveSoldBitmap(bitmap);
-  await setSoldCount(count);
+  await saveSoldBitmap(side, bitmap);
+  await setSoldCount(side, count);
 }
 
-export async function repairSoldBitmapIfNeeded() {
-  if (repairPromise) return repairPromise;
+export async function repairSoldBitmapIfNeeded(side: CanvasSide) {
+  const existing = repairPromises.get(side);
+  if (existing) return existing;
 
-  repairPromise = (async () => {
+  const promise = (async () => {
+    const bitmapPath = soldBitmapPath(side);
+    const countPath = soldCountPath(side);
+
     let fileCount = 0;
     try {
-      fileCount = parseInt(await fs.readFile(SOLD_COUNT_PATH, "utf8"), 10);
+      fileCount = parseInt(await fs.readFile(countPath, "utf8"), 10);
       if (!Number.isFinite(fileCount) || fileCount < 0) fileCount = 0;
     } catch {
       fileCount = 0;
@@ -96,14 +110,14 @@ export async function repairSoldBitmapIfNeeded() {
 
     let bitmap: Buffer;
     try {
-      const raw = await fs.readFile(BITMAP_PATH);
+      const raw = await fs.readFile(bitmapPath);
       if (raw.length !== BITMAP_BYTE_SIZE) {
-        await rebuildSoldBitmapFromSalesLog();
+        await rebuildSoldBitmapFromSalesLog(side);
         return;
       }
       bitmap = raw;
     } catch {
-      await rebuildSoldBitmapFromSalesLog();
+      await rebuildSoldBitmapFromSalesLog(side);
       return;
     }
 
@@ -112,30 +126,31 @@ export async function repairSoldBitmapIfNeeded() {
     const mismatch = fileCount > 0 && Math.abs(bitmapCount - fileCount) > 50;
 
     if (allMarkedSold && fileCount < TOTAL_PIXELS - 1000) {
-      await rebuildSoldBitmapFromSalesLog();
+      await rebuildSoldBitmapFromSalesLog(side);
       return;
     }
 
     if (mismatch) {
-      await rebuildSoldBitmapFromSalesLog();
+      await rebuildSoldBitmapFromSalesLog(side);
       return;
     }
 
     if (fileCount === 0 && bitmapCount > 0) {
-      await setSoldCount(bitmapCount);
+      await setSoldCount(side, bitmapCount);
     }
   })().finally(() => {
-    repairPromise = null;
+    repairPromises.delete(side);
   });
 
-  return repairPromise;
+  repairPromises.set(side, promise);
+  return promise;
 }
 
-async function migrateFromNdjson() {
+async function migrateFromNdjson(side: CanvasSide) {
   const bitmap = createEmptyBitmap();
   const batch: PixelRecord[] = [];
 
-  await streamNdjson(SALES_LOG_PATH, (record) => {
+  await streamNdjson(salesLogPath(side), (record) => {
     if (
       Number.isInteger(record.x) &&
       Number.isInteger(record.y) &&
@@ -150,15 +165,15 @@ async function migrateFromNdjson() {
   });
 
   for (let i = 0; i < batch.length; i += 2000) {
-    await paintRevealedPixels(batch.slice(i, i + 2000));
+    await paintRevealedPixels(side, batch.slice(i, i + 2000));
   }
 
-  await saveSoldBitmap(bitmap);
-  await setSoldCount(countSoldInBitmap(bitmap));
+  await saveSoldBitmap(side, bitmap);
+  await setSoldCount(side, countSoldInBitmap(bitmap));
 }
 
-async function migrateFromLegacyJson() {
-  const raw = await fs.readFile(PIXELS_PATH, "utf8");
+async function migrateFromLegacyJson(side: CanvasSide) {
+  const raw = await fs.readFile(pixelsPath(side), "utf8");
   const pixels = JSON.parse(raw) as Record<string, PixelRecord>;
   const records = Object.values(pixels).filter(
     (r) =>
@@ -174,83 +189,87 @@ async function migrateFromLegacyJson() {
   for (const record of records) {
     markPixelInBitmap(bitmap, record.x, record.y);
   }
-  await saveSoldBitmap(bitmap);
+  await saveSoldBitmap(side, bitmap);
 
   for (let i = 0; i < records.length; i += 2000) {
-    await paintRevealedPixels(records.slice(i, i + 2000));
+    await paintRevealedPixels(side, records.slice(i, i + 2000));
   }
 
-  await setSoldCount(records.length);
+  await setSoldCount(side, records.length);
 }
 
-export async function ensureSalesMigrated() {
-  if (migrationPromise) return migrationPromise;
+export async function ensureSalesMigrated(side: CanvasSide) {
+  await ensureDualSideLayout();
 
-  migrationPromise = (async () => {
+  const existing = migrationPromises.get(side);
+  if (existing) return existing;
+
+  const promise = (async () => {
     try {
-      await fs.access(BITMAP_PATH);
-      await fs.access(MIGRATED_FLAG);
-      await repairSoldBitmapIfNeeded();
+      await fs.access(soldBitmapPath(side));
+      await fs.access(migratedFlagPath(side));
+      await repairSoldBitmapIfNeeded(side);
       return;
     } catch {
       // run migration
     }
 
-    invalidateBitmapCache();
+    invalidateBitmapCache(side);
 
     try {
-      await fs.access(SALES_LOG_PATH);
-      await migrateFromNdjson();
+      await fs.access(salesLogPath(side));
+      await migrateFromNdjson(side);
     } catch {
       try {
-        await fs.access(PIXELS_PATH);
-        await migrateFromLegacyJson();
+        await fs.access(pixelsPath(side));
+        await migrateFromLegacyJson(side);
       } catch {
-        await loadSoldBitmap(true);
-        await setSoldCount(0);
+        await loadSoldBitmap(side, true);
+        await setSoldCount(side, 0);
       }
     }
 
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(MIGRATED_FLAG, new Date().toISOString(), "utf8");
-    await repairSoldBitmapIfNeeded();
+    await fs.mkdir(sideDataDir(side), { recursive: true });
+    await fs.writeFile(migratedFlagPath(side), new Date().toISOString(), "utf8");
+    await repairSoldBitmapIfNeeded(side);
   })();
 
-  return migrationPromise;
+  migrationPromises.set(side, promise);
+  return promise;
 }
 
-export async function incrementSoldCount(by: number) {
+export async function incrementSoldCount(side: CanvasSide, by: number) {
   let current = 0;
   try {
-    current = parseInt(await fs.readFile(SOLD_COUNT_PATH, "utf8"), 10);
+    current = parseInt(await fs.readFile(soldCountPath(side), "utf8"), 10);
     if (!Number.isFinite(current) || current < 0) current = 0;
   } catch {
     current = 0;
   }
-  await setSoldCount(current + by);
+  await setSoldCount(side, current + by);
 }
 
-export async function getSoldCount(): Promise<number> {
-  await ensureSalesMigrated();
-  await repairSoldBitmapIfNeeded();
+export async function getSoldCount(side: CanvasSide): Promise<number> {
+  await ensureSalesMigrated(side);
+  await repairSoldBitmapIfNeeded(side);
 
   try {
-    const raw = await fs.readFile(SOLD_COUNT_PATH, "utf8");
+    const raw = await fs.readFile(soldCountPath(side), "utf8");
     const count = parseInt(raw, 10);
     if (Number.isFinite(count) && count >= 0) return count;
   } catch {
     // rebuild from bitmap
   }
 
-  const bitmap = await loadSoldBitmap(true);
+  const bitmap = await loadSoldBitmap(side, true);
   const count = countSoldInBitmap(bitmap);
-  await setSoldCount(count);
+  await setSoldCount(side, count);
   return count;
 }
 
-export async function isPixelSold(x: number, y: number): Promise<boolean> {
-  await ensureSalesMigrated();
-  await repairSoldBitmapIfNeeded();
-  const bitmap = await loadSoldBitmap(true);
+export async function isPixelSold(side: CanvasSide, x: number, y: number): Promise<boolean> {
+  await ensureSalesMigrated(side);
+  await repairSoldBitmapIfNeeded(side);
+  const bitmap = await loadSoldBitmap(side, true);
   return isPixelSoldInBitmap(bitmap, x, y);
 }

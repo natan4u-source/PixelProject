@@ -2,7 +2,6 @@ import { randomUUID } from "crypto";
 import {
   GRID_HEIGHT,
   GRID_WIDTH,
-  MAX_BULK_PURCHASE,
   PRICE_PER_PIXEL_INR,
 } from "./config";
 import { getRazorpayKeyId, isRazorpayEnabled } from "./env";
@@ -18,10 +17,11 @@ import {
 } from "./purchase";
 import { getRazorpayClient, inrToPaise, verifyPaymentSignature } from "./razorpay";
 import { getSoldCountFast, isPixelSoldFast } from "./sales-store";
+import type { CanvasSide } from "./sides";
 
 export type CreateOrderInput =
-  | { type: "single"; x: number; y: number }
-  | { type: "bulk"; count: number };
+  | { side: CanvasSide; type: "single"; x: number; y: number }
+  | { side: CanvasSide; type: "bulk"; count: number };
 
 export function assertRazorpayConfigured() {
   if (!isRazorpayEnabled()) {
@@ -29,7 +29,7 @@ export function assertRazorpayConfigured() {
   }
 }
 
-export async function validateSinglePurchase(x: number, y: number) {
+export async function validateSinglePurchase(side: CanvasSide, x: number, y: number) {
   if (
     !Number.isInteger(x) ||
     !Number.isInteger(y) ||
@@ -41,27 +41,23 @@ export async function validateSinglePurchase(x: number, y: number) {
     throw new Error("Invalid pixel coordinates.");
   }
 
-  if (await isPixelSoldFast(x, y)) {
+  if (await isPixelSoldFast(side, x, y)) {
     throw new Error("This pixel is already sold.");
   }
 
-  const sold = await getSoldCountFast();
+  const sold = await getSoldCountFast(side);
   const remaining = GRID_WIDTH * GRID_HEIGHT - sold;
   if (remaining <= 0) {
-    throw new Error("All pixels are sold out.");
+    throw new Error("All pixels are sold out on this side.");
   }
 }
 
-export async function validateBulkPurchase(count: number) {
+export async function validateBulkPurchase(side: CanvasSide, count: number) {
   if (!Number.isInteger(count) || count < 1) {
     throw new Error("Enter a whole number of pixels (1 or more).");
   }
 
-  if (count > MAX_BULK_PURCHASE) {
-    throw new Error(`Maximum ${MAX_BULK_PURCHASE.toLocaleString()} pixels per purchase.`);
-  }
-
-  const sold = await getSoldCountFast();
+  const sold = await getSoldCountFast(side);
   const remaining = GRID_WIDTH * GRID_HEIGHT - sold;
   if (count > remaining) {
     throw new Error(`Only ${remaining.toLocaleString()} pixel(s) are still available.`);
@@ -79,9 +75,9 @@ export async function createPaymentOrder(input: CreateOrderInput) {
   assertRazorpayConfigured();
 
   if (input.type === "single") {
-    await validateSinglePurchase(input.x, input.y);
+    await validateSinglePurchase(input.side, input.x, input.y);
   } else {
-    await validateBulkPurchase(input.count);
+    await validateBulkPurchase(input.side, input.count);
   }
 
   const amountPaise = amountForOrder(input);
@@ -93,6 +89,7 @@ export async function createPaymentOrder(input: CreateOrderInput) {
     currency: "INR",
     receipt: internalId.slice(0, 40),
     notes: {
+      side: input.side,
       type: input.type,
       ...(input.type === "single"
         ? { x: String(input.x), y: String(input.y) }
@@ -102,6 +99,7 @@ export async function createPaymentOrder(input: CreateOrderInput) {
 
   await savePaymentOrder({
     id: internalId,
+    side: input.side,
     razorpayOrderId: order.id,
     type: input.type,
     x: input.type === "single" ? input.x : undefined,
@@ -115,10 +113,12 @@ export async function createPaymentOrder(input: CreateOrderInput) {
     amount: amountPaise,
     currency: order.currency,
     keyId: getRazorpayKeyId()!,
+    side: input.side,
   };
 }
 
 async function fulfillFromStoredOrder(order: {
+  side: CanvasSide;
   type: "single" | "bulk";
   x?: number;
   y?: number;
@@ -128,15 +128,15 @@ async function fulfillFromStoredOrder(order: {
     if (order.x === undefined || order.y === undefined) {
       throw new Error("Invalid payment order.");
     }
-    await validateSinglePurchase(order.x, order.y);
-    return purchaseExactPixel(order.x, order.y);
+    await validateSinglePurchase(order.side, order.x, order.y);
+    return purchaseExactPixel(order.side, order.x, order.y);
   }
 
   if (order.count === undefined) {
     throw new Error("Invalid payment order.");
   }
-  await validateBulkPurchase(order.count);
-  return purchasePixelCount(order.count);
+  await validateBulkPurchase(order.side, order.count);
+  return purchasePixelCount(order.side, order.count);
 }
 
 export async function verifyAndFulfillPayment(params: {
@@ -163,7 +163,7 @@ export async function verifyAndFulfillPayment(params: {
     return existing.receipt;
   }
 
-  const receipt = await fulfillFromStoredOrder(existing);
+  const receipt = await fulfillFromStoredOrder({ ...existing, side: existing.side ?? "a" });
   await markPaymentOrderPaid(razorpayOrderId, razorpayPaymentId, receipt);
   return receipt;
 }
@@ -176,7 +176,7 @@ export async function fulfillWebhookPayment(
   if (!existing) return null;
   if (existing.status === "paid" && existing.receipt) return null;
 
-  const receipt = await fulfillFromStoredOrder(existing);
+  const receipt = await fulfillFromStoredOrder({ ...existing, side: existing.side ?? "a" });
   await markPaymentOrderPaid(razorpayOrderId, razorpayPaymentId, receipt);
   return receipt;
 }
