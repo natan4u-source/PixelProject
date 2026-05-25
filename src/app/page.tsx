@@ -357,7 +357,7 @@ export default function HomePage() {
                   : "bg-[var(--cockroach)] text-black hover:brightness-110"
               }`}
             >
-              {isKamal ? "Support Kamal" : "Support Cockroach"}
+              {isKamal ? "Buy Kamal" : "Buy Cockroach"}
             </button>
           </div>
 
