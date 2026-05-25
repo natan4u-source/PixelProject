@@ -1,16 +1,28 @@
 import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
-import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
-import { TaxDisclaimer } from "@/components/TaxDisclaimer";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SITE_NAME } from "@/lib/config";
 import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "About — KAMAL vs COCKROACH",
   description:
-    "Learn about the KAMAL vs COCKROACH live pixel war — two sides, two canvases, one public battle that never resets.",
+    "Kamal vs Cockroach is a live internet pixel war — satire, competition, and collective digital participation revealing hidden images one pixel at a time.",
 };
+
+const COMBINES = [
+  "internet culture",
+  "satire",
+  "competition",
+  "digital participation",
+  "meme-era storytelling",
+] as const;
+
+const HOW_IT_WORKS = [
+  "Choose a side",
+  "Purchase pixel placements",
+  "Watch the hidden image slowly reveal",
+  "Help your side gain dominance in the live battle",
+] as const;
 
 export default function AboutPage() {
   return (
@@ -20,72 +32,132 @@ export default function AboutPage() {
       <div className="relative mx-auto max-w-5xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
         <div className="guide-hero-panel rounded-2xl px-5 py-8 text-center sm:px-10 sm:py-12">
           <p className="inline-block rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--kamal-bright)] sm:text-xs">
-            ⚔️ The mission
+            ⚔️ About the war
           </p>
-          <h1 className="war-title mt-5 text-5xl text-white sm:text-6xl">About this battle</h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
-            {SITE_NAME} is a live, public pixel war. Two sides. Two hidden images. One scoreboard
-            that runs forever.
+          <h1 className="war-title mt-5 text-5xl text-white sm:text-6xl">Kamal vs Cockroach</h1>
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base">
+            Kamal vs Cockroach is a live internet pixel war where people choose a side and
+            collectively reveal hidden images one pixel at a time.
           </p>
           <div className="mx-auto mt-6 flex h-2.5 max-w-xs overflow-hidden rounded-full bg-black/50 sm:max-w-sm">
             <div className="battle-bar-kamal w-1/2" />
             <div className="battle-bar-cockroach w-1/2" />
           </div>
-          <PlatformNatureDisclaimer className="mx-auto mt-5 max-w-lg text-center" />
         </div>
 
         <article className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
-          <AboutSection accent="kamal" badge="Team Kamal" title="Build the nation 🪷">
+          <AboutSection accent="neutral" badge="Origins" title="Inspired by internet culture">
             <p>
-              Team Kamal is Side A — the orange canvas. Supporters buy pixels to reveal a hidden
-              lotus image, one square at a time. Every pixel you buy stays on the canvas permanently.
+              Inspired by classic internet culture projects like collaborative pixel canvases and
+              permanent online art experiments, the platform turns participation into a public,
+              evolving battle. Every pixel purchased permanently contributes to the reveal progress
+              of one side.
             </p>
           </AboutSection>
 
-          <AboutSection accent="cockroach" badge="Team Cockroach" title="Spread the rot 🪳">
-            <p>
-              Team Cockroach is Side B — the green canvas. Supporters buy pixels to reveal their
-              hidden image and push their side ahead in the live pixel count battle.
+          <AboutSection accent="neutral" badge="The mix" title="What this project combines">
+            <div className="flex flex-wrap gap-2">
+              {COMBINES.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white/80"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </AboutSection>
+
+          <AboutSection accent="neutral" badge="Live battle" title="Two sides compete in real time">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-[var(--kamal)]/40 bg-[var(--kamal)]/10 p-4 text-center">
+                <p className="war-title war-title-kamal text-2xl">Team Kamal</p>
+                <p className="mt-2 text-sm text-white/65">Side A · orange canvas · 🪷</p>
+              </div>
+              <div className="rounded-xl border border-[var(--cockroach)]/40 bg-[var(--cockroach)]/10 p-4 text-center">
+                <p className="war-title war-title-cockroach text-2xl">Team Cockroach</p>
+                <p className="mt-2 text-sm text-white/65">Side B · green canvas · 🪳</p>
+              </div>
+            </div>
+            <p className="mt-4">
+              As more pixels are revealed, hidden images slowly emerge and the live battle score
+              changes publicly for everyone to see.
             </p>
           </AboutSection>
 
-          <AboutSection accent="neutral" badge="The rules" title="How the war works">
-            <ul className="space-y-3">
-              <li className="flex gap-3">
-                <span className="text-[var(--accent)]">→</span>
-                <span>Each side has its own canvas with about one million pixels.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-[var(--accent)]">→</span>
-                <span>
-                  Pixels cost ₹100 each (plus applicable taxes at checkout). Buy one or buy in bulk.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-[var(--accent)]">→</span>
-                <span>The side with more pixels sold is currently winning.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-[var(--accent)]">→</span>
-                <span>
-                  This page never resets. Your support stays forever — every purchased pixel remains
-                  on the public canvas.
-                </span>
-              </li>
-            </ul>
-            <TaxDisclaimer className="mt-3" />
+          <AboutSection accent="neutral" badge="Long-term" title="Built to stay online">
+            <p>
+              Unlike temporary social media trends, the canvas is designed to remain online
+              long-term. Every purchased pixel becomes part of a permanent internet artifact and a
+              snapshot of online participation during this moment in time.
+            </p>
             <PermanenceDisclaimer className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3" />
           </AboutSection>
 
-          <AboutSection accent="neutral" badge="Why it exists" title="A canvas for the people">
+          <AboutSection accent="kamal" badge="Purpose" title="Why this exists">
             <p>
-              This is not just a website — it is a living scoreboard. Anyone can visit, pick a side,
-              and leave a permanent mark. No account needed. No coding needed. Just click, pay, and
-              join the battle.
+              The internet has always been driven by communities, memes, movements, and
+              participation.
             </p>
             <p>
-              Whether you support Team Kamal or Team Cockroach, your pixels are public, permanent,
-              and counted in real time on the homepage.
+              Kamal vs Cockroach was created as a modern interactive internet experiment where:
+            </p>
+            <ul className="space-y-3">
+              <li className="flex gap-3">
+                <span className="text-[var(--kamal)]">→</span>
+                <span>every contribution visibly changes the outcome</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="text-[var(--kamal)]">→</span>
+                <span>every participant becomes part of the story</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="text-[var(--kamal)]">→</span>
+                <span>the final reveal is shaped collectively by the public</span>
+              </li>
+            </ul>
+            <p className="italic text-white/60">
+              It is part internet artwork, part social experiment, and part live digital battle.
+            </p>
+          </AboutSection>
+
+          <AboutSection accent="cockroach" badge="Play" title="How it works">
+            <ol className="space-y-3">
+              {HOW_IT_WORKS.map((step, i) => (
+                <li key={step} className="flex gap-4">
+                  <span className="guide-step-num shrink-0 text-2xl text-[var(--cockroach)]">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="pt-1">{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 text-lg font-bold text-[var(--accent)]">Every pixel matters.</p>
+          </AboutSection>
+
+          <div className="forever-pledge rounded-2xl px-6 py-8 text-center sm:px-10">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/50">
+              Permanent participation
+            </p>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white sm:text-base">
+              This platform is designed so that purchased pixel placements remain part of the public
+              canvas as it evolves over time.
+            </p>
+            <p className="war-title mt-6 text-3xl text-white sm:text-4xl">The battle may end.</p>
+            <p className="war-title mt-1 text-3xl text-[var(--accent)] sm:text-4xl">
+              The internet remembers.
+            </p>
+          </div>
+
+          <AboutSection accent="neutral" badge="Disclaimer" title="Independent project">
+            <p>
+              Kamal vs Cockroach is independently operated as an internet entertainment and
+              participation project involving satire, symbolism, artistic expression, and public
+              interaction.
+            </p>
+            <p>
+              The platform is not officially affiliated with or endorsed by any political party,
+              government body, or public figure unless explicitly stated.
             </p>
           </AboutSection>
         </article>
