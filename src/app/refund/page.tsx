@@ -2,19 +2,13 @@ import { TAX_DISCLAIMER } from "@/components/TaxDisclaimer";
 import { LegalBusinessDetails } from "@/components/legal/LegalBusinessDetails";
 import { LegalList, LegalPageShell, LegalSection } from "@/components/legal/LegalPageShell";
 import { SiteFooter } from "@/components/SiteFooter";
-import {
-  LEGAL_LAST_UPDATED,
-  REFUND_MODE,
-  REFUND_PROCESSING_BUSINESS_DAYS_MAX,
-  REFUND_PROCESSING_BUSINESS_DAYS_MIN,
-  REFUND_REQUEST_WINDOW_DAYS,
-} from "@/lib/business";
-import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/config";
+import { LEGAL_LAST_UPDATED } from "@/lib/business";
+import { BUSINESS_NAME, SITE_NAME, SUPPORT_EMAIL } from "@/lib/config";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Return & Refund Policy — KAMAL vs COCKROACH",
-  description: "Return and refund rules, duration, and refund mode for pixel purchases.",
+  description: "No refund policy for digital pixel purchases on kamalvscockroach.com.",
 };
 
 export default function RefundPage() {
@@ -23,53 +17,49 @@ export default function RefundPage() {
       <LegalPageShell
         badge="Legal"
         title="Return & Refund Policy"
-        subtitle={`Return and refund rules for digital pixel purchases on ${SITE_NAME}.`}
+        subtitle={`Refund rules for digital pixel purchases on ${SITE_NAME}.`}
         lastUpdated={LEGAL_LAST_UPDATED}
       >
         <LegalSection title="Operator">
           <LegalBusinessDetails />
         </LegalSection>
 
+        <LegalSection title="No refund policy">
+          <p>
+            <strong className="text-white">
+              All sales are final. There is no refund on any pixel purchase.
+            </strong>
+          </p>
+          <p className="mt-3">
+            By completing payment, you agree that {BUSINESS_NAME} does not offer refunds, returns, or
+            exchanges once a transaction is successfully processed — including when pixels are allocated
+            and revealed on the public canvas.
+          </p>
+        </LegalSection>
+
+        <LegalSection title="Why refunds are not offered">
+          <LegalList
+            items={[
+              "Pixels are a digital service delivered instantly upon successful payment.",
+              "Each purchase permanently marks coordinates on a public canvas visible to all visitors.",
+              "The service cannot be reversed without affecting the collective canvas and other participants.",
+            ]}
+          />
+        </LegalSection>
+
         <LegalSection title="Returns">
           <p>
-            Pixels are a <strong className="text-white">digital, instantly delivered</strong> service shown
-            on a public canvas. Physical returns do not apply. Once pixels are successfully allocated and
-            revealed, they generally cannot be &ldquo;returned.&rdquo;
+            Physical returns do not apply. Digital pixel placements cannot be returned or undone after
+            successful delivery.
           </p>
         </LegalSection>
 
-        <LegalSection title="Refund eligibility">
-          <LegalList
-            items={[
-              "Duplicate charge for the same order.",
-              "Payment succeeded but pixels were not allocated due to a technical error.",
-              "Incorrect amount charged compared to the price shown at checkout.",
-              "Other cases approved by us after review with Razorpay payment proof.",
-            ]}
-          />
-          <p className="mt-3">
-            Refunds are <strong className="text-white">not</strong> provided when pixels were correctly
-            allocated and displayed, except where required by applicable law.
-          </p>
-        </LegalSection>
-
-        <LegalSection title="Duration — when to contact us">
+        <LegalSection title="Before you pay">
           <p>
-            Report a qualifying issue within{" "}
-            <strong className="text-white">{REFUND_REQUEST_WINDOW_DAYS} calendar days</strong> of the
-            payment date. Include your Razorpay payment id or order id, purchase date, canvas (A or B), and
-            a short description.
+            Please review your selection, canvas (A or B), quantity, and price (₹100 per pixel) before
+            confirming payment on Razorpay. If you do not agree to this no-refund policy, do not complete
+            the purchase.
           </p>
-        </LegalSection>
-
-        <LegalSection title="Refund mode & processing time">
-          <LegalList
-            items={[
-              `Refund mode: ${REFUND_MODE}`,
-              `Processing time: ${REFUND_PROCESSING_BUSINESS_DAYS_MIN}–${REFUND_PROCESSING_BUSINESS_DAYS_MAX} business days after approval, plus any additional time required by your bank or payment network.`,
-              "We will email you when a refund is initiated or if more information is needed.",
-            ]}
-          />
         </LegalSection>
 
         <LegalSection title="Taxes">
@@ -78,17 +68,17 @@ export default function RefundPage() {
 
         <LegalSection title="Cancellation">
           <p>
-            See our separate{" "}
+            See our{" "}
             <a href="/cancellation" className="text-[var(--kamal-bright)] underline">
               Cancellation Policy
             </a>{" "}
-            for order cancellation before delivery.
+            for checkout cancellation before payment only.
           </p>
         </LegalSection>
 
         <LegalSection title="Contact">
           <p>
-            Email{" "}
+            For payment or technical questions (not refunds), email{" "}
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--kamal-bright)] underline">
               {SUPPORT_EMAIL}
             </a>
