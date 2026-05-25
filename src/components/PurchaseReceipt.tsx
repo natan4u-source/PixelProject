@@ -25,8 +25,8 @@ type Props = {
 };
 
 function buildShareText(count: number, side: CanvasSide) {
-  const team = SIDE_INFO[side];
-  return `I just bought ${count} ${team.symbol} ${team.symbolLabel} pixel${count === 1 ? "" : "s"} for Team ${team.shortLabel} on ${SITE_NAME}! Join the live pixel war: ${SITE_URL}`;
+  const canvas = SIDE_INFO[side];
+  return `I bought ${count} pixel${count === 1 ? "" : "s"} on ${canvas.label} at ${SITE_NAME} — part of a living digital canvas. ${SITE_URL}`;
 }
 
 function shareOnFacebook(text: string, url: string) {
@@ -108,7 +108,7 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
         className={`flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-[var(--surface)] shadow-2xl ${panelBorder} ${panelGlow}`}
       >
         <div className="border-b border-[var(--border)] px-6 py-8 text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">Victory!</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">Thank you</p>
           <h2 id="receipt-title" className="mt-2 text-3xl font-bold sm:text-4xl">
             You bought {count.toLocaleString("en-IN")}
           </h2>
@@ -119,13 +119,13 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
             {team.label}
           </p>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            {count === 1 ? "Your pixel is" : "Your pixels are"} now part of the battle
+            {count === 1 ? "Your pixel is" : "Your pixels are"} now part of this historic canvas
           </p>
         </div>
 
         <div className="space-y-3 px-6 py-5">
           <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-            Share your support
+            Share your purchase
           </p>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -178,7 +178,7 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
                 label="Type"
                 value={receipt.type === "bulk" ? "Random bulk buy" : "Single pixel"}
               />
-              <ReceiptRow label="Team" value={team.label} />
+              <ReceiptRow label="Canvas" value={team.label} />
               <ReceiptRow
                 label="Total paid"
                 value={`₹${receipt.totalInr.toLocaleString("en-IN")}`}

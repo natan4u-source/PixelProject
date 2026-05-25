@@ -1,8 +1,10 @@
 "use client";
 
 import { TaxDisclaimer } from "@/components/TaxDisclaimer";
+import type { CanvasSide } from "@/lib/sides";
 
 type Props = {
+  side?: CanvasSide;
   sideLabel?: string;
   x: number;
   y: number;
@@ -27,7 +29,7 @@ export function PurchasePanel({
   onBuy,
   onClear,
 }: Props) {
-  const isKamal = sideLabel?.toLowerCase().includes("kamal");
+  const isKamal = side === "a";
 
   return (
     <div className="rounded-xl border border-white/10 bg-[var(--surface-elevated)] p-5 shadow-xl">
@@ -56,7 +58,7 @@ export function PurchasePanel({
       {ready && !isSold && (
         <>
           <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
-            Buy this pixel to permanently reveal that spot and push your side ahead in the battle.
+            Buy this pixel to permanently reveal that spot on the public canvas and add to the collective image.
           </p>
           <p
             className={`mt-3 text-lg font-semibold ${isKamal ? "text-[var(--kamal)]" : "text-[var(--cockroach)]"}`}

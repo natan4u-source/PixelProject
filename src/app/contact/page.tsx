@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Contact — KAMAL vs COCKROACH",
-  description: "Contact Kamal vs Cockroach for support, payments, and general inquiries.",
+  description: "Contact Kamal vs Cockroach for payments, refunds, and general inquiries.",
 };
 
 export default function ContactPage() {
@@ -34,7 +34,7 @@ export default function ContactPage() {
           <section className="guide-section-neutral rounded-2xl border bg-[var(--surface-elevated)]/90 p-6 sm:p-8">
             <h2 className="war-title text-2xl text-white">Email</h2>
             <p className="mt-3 text-sm leading-relaxed text-white/70 sm:text-base">
-              For support, payment issues, refund requests, or partnership inquiries:
+              For payment issues, refund requests, or general inquiries:
             </p>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}

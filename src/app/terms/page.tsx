@@ -40,9 +40,9 @@ export default function TermsPage() {
         <LegalSection title="The service">
           <LegalList
             items={[
-              `${SITE_NAME} is an interactive pixel canvas where visitors buy individual pixels on Team Kamal or Team Cockroach sides.`,
+              `${SITE_NAME} is an interactive pixel canvas where visitors buy individual pixels on Canvas A or Canvas B.`,
               "Each side has a hidden image that is revealed as pixels are sold.",
-              "Pixel sales are counted publicly in a live battle score.",
+              "Pixel sales are counted publicly on each canvas.",
               "The canvas is designed not to reset; purchased pixels remain visible as described on the site.",
             ]}
           />
@@ -85,10 +85,10 @@ export default function TermsPage() {
         <LegalSection title="No guarantees">
           <LegalList
             items={[
-              "We do not guarantee uninterrupted access, error-free operation, or a particular battle outcome.",
+              "We do not guarantee uninterrupted access, error-free operation, or a particular purchase count on either canvas.",
               "We may perform maintenance, updates, or changes that briefly affect availability.",
               "Outages beyond our reasonable control are addressed under “Force majeure” below.",
-              "Team branding and hidden images are artistic and expressive; see “Nature of the platform” above.",
+              "Canvas branding and hidden images are artistic and expressive; see “Nature of the platform” above.",
             ]}
           />
         </LegalSection>

@@ -13,18 +13,18 @@ export const metadata: Metadata = {
 };
 
 const STEPS = [
-  { num: "01", text: "Pick a side — Team Kamal 🪷 or Team Cockroach 🪳." },
-  { num: "02", text: "Click a square on that side's canvas (or buy many at once)." },
+  { num: "01", text: "Choose Canvas A or Canvas B on the homepage." },
+  { num: "02", text: "Click a square on that canvas (or buy many at once)." },
   { num: "03", text: "Pay ₹100 per pixel." },
   { num: "04", text: "That square lights up and reveals a piece of the hidden image." },
-  { num: "05", text: "Your pixel count pushes your team ahead in the live battle." },
+  { num: "05", text: "Your purchase stays on the public canvas as part of history." },
 ] as const;
 
 const REASONS = [
-  { icon: "🪷", text: "Support the side you believe in." },
-  { icon: "📌", text: "Leave a permanent mark on a public canvas." },
+  { icon: "🎯", text: "Own a permanent square on a public digital canvas." },
+  { icon: "📌", text: "Leave a lasting mark that others can see online." },
   { icon: "✨", text: "Help reveal the full image, one square at a time." },
-  { icon: "⚔️", text: "Push your team ahead in the KAMAL vs COCKROACH battle." },
+  { icon: "📜", text: "Take part in a collective artwork that grows over time." },
 ] as const;
 
 const FAQS = [
@@ -38,11 +38,11 @@ const FAQS = [
   },
   {
     q: "Will my pixel disappear later?",
-    a: "No. Once bought, your pixel stays on the canvas. Your support stays forever.",
+    a: "No. Once bought, your pixel stays on the canvas. Your pixels stay forever.",
   },
   {
     q: "What do I actually get?",
-    a: "You get that exact square on the public canvas, and you help your team win the pixel count battle.",
+    a: "You get that exact square on the public canvas, permanently revealed on the image.",
   },
 ] as const;
 
@@ -106,7 +106,7 @@ export default function WhatIsAPixelPage() {
               On <strong className="text-white">{SITE_NAME}</strong>, each canvas is a huge grid of
               pixels — a digital mosaic with about{" "}
               <strong className="text-[var(--accent)]">one million</strong> tiny squares on each
-              side (Team Kamal and Team Cockroach).
+              side (Canvas A and Canvas B).
             </p>
             <p>
               When you <strong className="text-[var(--kamal-bright)]">buy a pixel</strong>, you are
@@ -115,7 +115,7 @@ export default function WhatIsAPixelPage() {
             </p>
             <div className="forever-pledge mt-4 rounded-xl px-4 py-3 text-center">
               <p className="text-sm font-bold text-white">This page will never reset.</p>
-              <p className="text-sm font-bold text-[var(--accent)]">Your support stays forever*</p>
+              <p className="text-sm font-bold text-[var(--accent)]">Your pixels stay forever*</p>
             </div>
             <PermanenceDisclaimer className="mt-3" />
           </GuideSection>
@@ -172,14 +172,14 @@ export default function WhatIsAPixelPage() {
         <div className="guide-hero-panel mt-10 rounded-2xl px-6 py-8 text-center sm:px-10">
           <p className="war-title text-3xl text-white sm:text-4xl">Ready to claim your square?</p>
           <p className="mx-auto mt-3 max-w-md text-sm text-white/65 sm:text-base">
-            Pick Team Kamal or Team Cockroach and buy your first pixel on the live canvas.
+            Choose a canvas and buy your first pixel — be part of history.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/#canvases"
               className="war-btn-kamal rounded-lg px-6 py-2.5 text-sm font-bold uppercase tracking-wide"
             >
-              Go to the battle
+              Buy a pixel
             </Link>
             <Link
               href="/"
