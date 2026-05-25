@@ -51,7 +51,7 @@ export function getCashfreeSecret() {
 }
 
 export function getCashfreeApiVersion() {
-  return process.env.CASHFREE_API_VERSION?.trim() || "2023-08-01";
+  return process.env.CASHFREE_API_VERSION?.trim() || "2025-01-01";
 }
 
 /** sandbox | production */
