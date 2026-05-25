@@ -40,7 +40,7 @@ export default function ShippingPage() {
               `Delivery time: ${DIGITAL_DELIVERY_TIME}.`,
               "After Razorpay confirms payment, pixels are allocated and revealed on the canvas automatically.",
               "You can verify your purchase on the live canvas and in your on-screen receipt.",
-              "If allocation fails due to a technical error, contact us within 7 days (see Refund Policy).",
+              "If you have a payment or delivery issue, contact us by email (see Contact page). Refunds are not offered.",
             ]}
           />
         </LegalSection>

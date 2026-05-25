@@ -21,7 +21,7 @@ export default function ContactPage() {
           </p>
           <h1 className="war-title mt-4 text-4xl text-white sm:text-5xl">Contact</h1>
           <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-white/70 sm:text-base">
-            Questions about pixel purchases, payments, refunds, or the site.
+            Questions about pixel purchases, payments, or the site.
           </p>
         </div>
 

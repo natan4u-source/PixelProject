@@ -53,7 +53,7 @@ export default function CancellationPage() {
 
         <LegalSection title="Related policies">
           <p>
-            Approved cancellations that qualify for a refund are processed as described in our{" "}
+            Pixel purchases are non-refundable. See our{" "}
             <a href="/refund" className="text-[var(--kamal-bright)] underline">
               Return &amp; Refund Policy
             </a>
