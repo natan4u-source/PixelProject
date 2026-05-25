@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { SITE_NAME, SITE_URL } from "@/lib/config";
+import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_SIDE, SIDE_INFO, type CanvasSide } from "@/lib/sides";
+import {
+  buildReceiptShareCaption,
+  downloadReceiptImage,
+  generateReceiptShareImage,
+  shareReceiptScreenshot,
+  type ShareScreenshotResult,
+} from "@/lib/receipt-share-image";
 
 export type ReceiptPixel = {
   x: number;
@@ -24,50 +30,58 @@ type Props = {
   onClose: () => void;
 };
 
-function buildShareText(count: number, side: CanvasSide) {
-  const team = SIDE_INFO[side];
-  return `I just bought ${count} ${team.symbol} ${team.symbolLabel} pixel${count === 1 ? "" : "s"} for Team ${team.shortLabel} on ${SITE_NAME}! Join the live pixel war: ${SITE_URL}`;
-}
-
-function shareOnFacebook(text: string, url: string) {
-  const shareUrl = new URL("https://www.facebook.com/sharer/sharer.php");
-  shareUrl.searchParams.set("u", url);
-  shareUrl.searchParams.set("quote", text);
-  window.open(shareUrl.toString(), "_blank", "noopener,noreferrer,width=600,height=400");
-}
-
-async function shareOnInstagram(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
-  }
-
-  if (typeof navigator.share === "function") {
-    try {
-      await navigator.share({ text });
-      return "shared";
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return "copied";
-      }
-    }
-  }
-
-  window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
-  return "copied";
-}
+type ShareStatus = {
+  platform: "facebook" | "instagram" | null;
+  result: ShareScreenshotResult | "loading" | "error" | "idle";
+  message?: string;
+};
 
 export function PurchaseReceipt({ receipt, onClose }: Props) {
-  const [instagramStatus, setInstagramStatus] = useState<"idle" | "copied" | "shared">("idle");
   const [showDetails, setShowDetails] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [shareStatus, setShareStatus] = useState<ShareStatus>({ platform: null, result: "idle" });
+
+  const buildPreview = useCallback(async (data: PurchaseReceiptData) => {
+    setPreviewLoading(true);
+    try {
+      const blob = await generateReceiptShareImage(data);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+    } catch {
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!receipt) {
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      setShareStatus({ platform: null, result: "idle" });
+      return;
+    }
+
+    setShowDetails(false);
+    setShareStatus({ platform: null, result: "idle" });
+    void buildPreview(receipt);
+
+    return () => {
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, [receipt, buildPreview]);
 
   if (!receipt) return null;
 
@@ -85,17 +99,72 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
     timeStyle: "short",
   });
   const shortId = receipt.id.slice(0, 8).toUpperCase();
-  const shareText = buildShareText(count, side);
 
-  const handleFacebookShare = () => {
-    shareOnFacebook(shareText, SITE_URL);
+  const statusMessage = (() => {
+    if (shareStatus.result === "loading" && shareStatus.platform) {
+      return "Preparing your screenshot…";
+    }
+    if (shareStatus.result === "shared") {
+      return shareStatus.platform === "instagram"
+        ? "Screenshot shared! Pick Instagram in the share menu to post."
+        : "Screenshot shared! Pick Facebook in the share menu to post.";
+    }
+    if (shareStatus.result === "downloaded") {
+      if (shareStatus.message) return shareStatus.message;
+      return shareStatus.platform === "instagram"
+        ? "Screenshot saved and caption copied. Open Instagram → create post → upload the image → paste caption."
+        : "Screenshot saved to your device. Upload it on Facebook when you share.";
+    }
+    if (shareStatus.result === "cancelled") {
+      return "Share cancelled.";
+    }
+    if (shareStatus.result === "error") {
+      return shareStatus.message ?? "Could not share. Try downloading the screenshot.";
+    }
+    return null;
+  })();
+
+  const handleShare = async (platform: "facebook" | "instagram") => {
+    setShareStatus({ platform, result: "loading" });
+    try {
+      const result = await shareReceiptScreenshot(receipt, platform);
+      setShareStatus({ platform, result });
+      if (result !== "cancelled") {
+        window.setTimeout(() => setShareStatus({ platform: null, result: "idle" }), 6000);
+      } else {
+        setShareStatus({ platform: null, result: "idle" });
+      }
+    } catch (error) {
+      setShareStatus({
+        platform,
+        result: "error",
+        message: error instanceof Error ? error.message : "Share failed.",
+      });
+      window.setTimeout(() => setShareStatus({ platform: null, result: "idle" }), 5000);
+    }
   };
 
-  const handleInstagramShare = async () => {
-    const result = await shareOnInstagram(shareText);
-    setInstagramStatus(result);
-    window.setTimeout(() => setInstagramStatus("idle"), 3000);
+  const handleDownloadScreenshot = async () => {
+    setShareStatus({ platform: null, result: "idle" });
+    try {
+      const blob = await generateReceiptShareImage(receipt);
+      downloadReceiptImage(blob);
+      setShareStatus({
+        platform: null,
+        result: "downloaded",
+        message: "Screenshot saved to your device.",
+      });
+      window.setTimeout(() => setShareStatus({ platform: null, result: "idle" }), 4000);
+    } catch (error) {
+      setShareStatus({
+        platform: null,
+        result: "error",
+        message: error instanceof Error ? error.message : "Download failed.",
+      });
+    }
   };
+
+  const sharing = shareStatus.result === "loading" && shareStatus.platform !== null;
 
   return (
     <div
@@ -107,7 +176,7 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
       <div
         className={`flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-[var(--surface)] shadow-2xl ${panelBorder} ${panelGlow}`}
       >
-        <div className="border-b border-[var(--border)] px-6 py-8 text-center">
+        <div className="border-b border-[var(--border)] px-6 py-6 text-center">
           <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">Victory!</p>
           <h2 id="receipt-title" className="mt-2 text-3xl font-bold sm:text-4xl">
             You bought {count.toLocaleString("en-IN")}
@@ -123,36 +192,75 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
           </p>
         </div>
 
-        <div className="space-y-3 px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-            Share your support
+            Share screenshot
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <p className="mt-1 text-center text-xs text-white/45">
+            Post your purchase card on Instagram or Facebook
+          </p>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-black/40">
+            {previewLoading && (
+              <div className="flex aspect-[4/5] items-center justify-center text-sm text-[var(--muted)]">
+                Creating preview…
+              </div>
+            )}
+            {!previewLoading && previewUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- blob URL from canvas export
+              <img
+                src={previewUrl}
+                alt="Your purchase screenshot to share on social media"
+                className="aspect-[4/5] w-full object-cover"
+              />
+            )}
+            {!previewLoading && !previewUrl && (
+              <div className="flex aspect-[4/5] items-center justify-center px-4 text-center text-sm text-[var(--muted)]">
+                Preview unavailable — you can still share or download.
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={handleFacebookShare}
-              className="flex items-center justify-center gap-2 rounded-lg border border-[#1877f2]/50 bg-[#1877f2]/10 py-3 text-sm font-semibold text-[#6eb0ff] transition hover:bg-[#1877f2]/20"
+              disabled={sharing}
+              onClick={() => handleShare("facebook")}
+              className="flex items-center justify-center gap-2 rounded-lg border border-[#1877f2]/50 bg-[#1877f2]/10 py-3 text-sm font-semibold text-[#6eb0ff] transition hover:bg-[#1877f2]/20 disabled:opacity-50"
             >
               <FacebookIcon />
-              Facebook
+              {sharing && shareStatus.platform === "facebook" ? "Sharing…" : "Facebook"}
             </button>
             <button
               type="button"
-              onClick={handleInstagramShare}
-              className="flex items-center justify-center gap-2 rounded-lg border border-[#e1306c]/50 bg-gradient-to-br from-[#f58529]/10 via-[#dd2a7b]/10 to-[#8134af]/10 py-3 text-sm font-semibold text-[#f77737] transition hover:brightness-110"
+              disabled={sharing}
+              onClick={() => handleShare("instagram")}
+              className="flex items-center justify-center gap-2 rounded-lg border border-[#e1306c]/50 bg-gradient-to-br from-[#f58529]/10 via-[#dd2a7b]/10 to-[#8134af]/10 py-3 text-sm font-semibold text-[#f77737] transition hover:brightness-110 disabled:opacity-50"
             >
               <InstagramIcon />
-              Instagram
+              {sharing && shareStatus.platform === "instagram" ? "Sharing…" : "Instagram"}
             </button>
           </div>
-          {instagramStatus === "copied" && (
-            <p className="text-center text-xs text-[var(--muted)]">
-              Share text copied! Paste it in Instagram to post.
+
+          <button
+            type="button"
+            disabled={sharing}
+            onClick={() => void handleDownloadScreenshot()}
+            className="mt-3 w-full rounded-lg border border-white/15 py-2.5 text-sm text-white/70 transition hover:border-white/30 hover:text-white disabled:opacity-50"
+          >
+            Download screenshot
+          </button>
+
+          {statusMessage && (
+            <p className="mt-3 text-center text-xs leading-relaxed text-[var(--muted)]" role="status">
+              {statusMessage}
             </p>
           )}
-          {instagramStatus === "shared" && (
-            <p className="text-center text-xs text-[var(--muted)]">Shared successfully!</p>
-          )}
+
+          <p className="mt-2 text-center text-[10px] leading-relaxed text-white/35">
+            On phone: tap Facebook or Instagram to open the share menu with your screenshot. On
+            desktop: the image downloads — upload it when you post.
+          </p>
         </div>
 
         <div className="mx-6 border-t border-dashed border-[var(--border)]" />
@@ -183,6 +291,10 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
                 label="Total paid"
                 value={`₹${receipt.totalInr.toLocaleString("en-IN")}`}
                 highlight
+              />
+              <ReceiptRow
+                label="Caption"
+                value={buildReceiptShareCaption(count, side)}
               />
             </div>
 
@@ -250,10 +362,10 @@ function ReceiptRow({
   highlight?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-[var(--muted)]">{label}</span>
+    <div className="flex items-start justify-between gap-4">
+      <span className="shrink-0 text-[var(--muted)]">{label}</span>
       <span
-        className={`${mono ? "font-mono" : ""} ${highlight ? "font-semibold text-[var(--accent)]" : ""}`}
+        className={`text-right ${mono ? "font-mono text-xs" : "text-sm"} ${highlight ? "font-semibold text-[var(--accent)]" : ""}`}
       >
         {value}
       </span>
