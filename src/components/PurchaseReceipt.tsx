@@ -116,7 +116,7 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
             {team.symbol}
           </p>
           <p className={`mt-3 text-lg font-semibold uppercase tracking-wide ${accentClass}`}>
-            {team.symbolLabel} symbol · {team.label}
+            {team.label}
           </p>
           <p className="mt-1 text-sm text-[var(--muted)]">
             {count === 1 ? "Your pixel is" : "Your pixels are"} now part of the battle
