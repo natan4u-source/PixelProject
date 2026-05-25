@@ -1,15 +1,15 @@
 /**
- * Seed random sold pixels in the CENTER horizontal third only (file storage).
- * Clears existing sales on each side, then places pixels only in the middle band.
+ * Seed random sold pixels in the CENTER vertical third only (file storage).
+ * Clears existing sales on each side, then places pixels only in the middle column.
  *
  * Usage: node scripts/seed-random-pixels.mjs [kamalCount] [cockroachCount]
  *   or:  node scripts/seed-random-pixels.mjs 50000        (both sides same)
  * Default: 100000 per side if no args.
  *
- * Grid 1000×1000 split into 3 horizontal bands (by row / y):
- *   top    y 0–332
- *   center y 333–665  ← pixels seeded here only
- *   bottom y 666–999
+ * Grid 1000×1000 split into 3 vertical strips (by column / x):
+ *   left   x 0–332
+ *   center x 333–665  ← pixels seeded here only
+ *   right  x 666–999
  */
 import { promises as fs, readFileSync } from "fs";
 import path from "path";
@@ -22,9 +22,9 @@ const TOTAL = W * H;
 const BYTE_SIZE = Math.ceil(TOTAL / 8);
 const DATA = path.join(process.cwd(), "data");
 const SIDES = ["a", "b"];
-const Y_CENTER_START = Math.floor(H / 3);
-const Y_CENTER_END = Math.floor((2 * H) / 3) - 1;
-const CENTER_PIXELS = W * (Y_CENTER_END - Y_CENTER_START + 1);
+const X_CENTER_START = Math.floor(W / 3);
+const X_CENTER_END = Math.floor((2 * W) / 3) - 1;
+const CENTER_PIXELS = H * (X_CENTER_END - X_CENTER_START + 1);
 
 const argA = parseInt(process.argv[2] ?? "", 10);
 const argB = parseInt(process.argv[3] ?? "", 10);
@@ -125,12 +125,12 @@ function randomColor() {
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** Unique random pixels only in center horizontal band */
+/** Unique random pixels only in center vertical strip */
 function pickCenterBandCoords(count) {
   const chosen = new Set();
   while (chosen.size < count) {
-    const y = Y_CENTER_START + Math.floor(Math.random() * (Y_CENTER_END - Y_CENTER_START + 1));
-    const x = Math.floor(Math.random() * W);
+    const x = X_CENTER_START + Math.floor(Math.random() * (X_CENTER_END - X_CENTER_START + 1));
+    const y = Math.floor(Math.random() * H);
     chosen.add(`${x},${y}`);
   }
   return Array.from(chosen).map((key) => {
@@ -220,7 +220,7 @@ async function paintRevealed(side, records) {
 async function seedSide(side) {
   const count = COUNTS[side];
   console.log(
-    `\n=== Side ${side.toUpperCase()} → ${count.toLocaleString()} pixels in center band (y ${Y_CENTER_START}–${Y_CENTER_END}) ===`,
+    `\n=== Side ${side.toUpperCase()} → ${count.toLocaleString()} pixels in center strip (x ${X_CENTER_START}–${X_CENTER_END}) ===`,
   );
   await clearSide(side);
 
@@ -274,8 +274,8 @@ async function seedSide(side) {
     purchasedAt,
     pixelCount: count,
     totalInr: count * 100,
-    region: "center-third",
-    yRange: [Y_CENTER_START, Y_CENTER_END],
+    region: "center-vertical-third",
+    xRange: [X_CENTER_START, X_CENTER_END],
     pixels: records.slice(0, 50).map(({ x, y, color }) => ({ x, y, color })),
     note: "Seeded center band — sample pixels only in log",
   };
@@ -294,12 +294,12 @@ loadEnvFile();
 await fs.mkdir(DATA, { recursive: true });
 
 console.log(
-  `Clearing old sales, then seeding center third (y ${Y_CENTER_START}–${Y_CENTER_END}): Kamal=${COUNTS.a.toLocaleString()}, Cockroach=${COUNTS.b.toLocaleString()}…`,
+  `Clearing old sales, then seeding center vertical strip (x ${X_CENTER_START}–${X_CENTER_END}): Kamal=${COUNTS.a.toLocaleString()}, Cockroach=${COUNTS.b.toLocaleString()}…`,
 );
 
 for (const side of SIDES) {
   await seedSide(side);
 }
 
-console.log("\nDone. Top and bottom thirds are empty; center third has random sold pixels.");
+console.log("\nDone. Left and right thirds are empty; center vertical strip has random sold pixels.");
 console.log("Restart dev server / redeploy and refresh the site.");
