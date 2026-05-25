@@ -12,6 +12,7 @@ import { HomeBusinessStrip } from "@/components/HomeBusinessStrip";
 import { SiteFooter } from "@/components/SiteFooter";
 import { openCashfreeCheckout } from "@/lib/cashfree-client";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
+import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -155,7 +156,8 @@ export default function HomePage() {
   }, [selected]);
 
   const selectedStatus = selected && sides ? sides[selected.side] : null;
-  const pricePerPixel = selectedStatus?.pricePerPixelInr ?? sides?.a.pricePerPixelInr ?? 100;
+  const pricePerPixel =
+    selectedStatus?.pricePerPixelInr ?? sides?.a.pricePerPixelInr ?? PRICE_PER_PIXEL_INR;
   const priceLabel = `₹${pricePerPixel.toLocaleString("en-IN")}`;
 
   const kamalSold = sides?.a.sold ?? 0;

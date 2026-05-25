@@ -3,7 +3,7 @@ import { LegalBusinessDetails } from "@/components/legal/LegalBusinessDetails";
 import { LegalList, LegalPageShell, LegalSection } from "@/components/legal/LegalPageShell";
 import { SiteFooter } from "@/components/SiteFooter";
 import { LEGAL_LAST_UPDATED } from "@/lib/business";
-import { BUSINESS_NAME, SITE_NAME, SUPPORT_EMAIL } from "@/lib/config";
+import { BUSINESS_NAME, PRICE_PER_PIXEL_INR, SITE_NAME, SUPPORT_EMAIL } from "@/lib/config";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -56,7 +56,8 @@ export default function RefundPage() {
 
         <LegalSection title="Before you pay">
           <p>
-            Please review your selection, canvas (A or B), quantity, and price (₹100 per pixel) before
+            Please review your selection, canvas (A or B), quantity, and price (₹
+            {PRICE_PER_PIXEL_INR.toLocaleString("en-IN")} per pixel) before
             confirming payment on Razorpay. If you do not agree to this no-refund policy, do not complete
             the purchase.
           </p>

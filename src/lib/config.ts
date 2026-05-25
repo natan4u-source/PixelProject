@@ -1,6 +1,6 @@
 export const GRID_WIDTH = 1000;
 export const GRID_HEIGHT = 1000;
-export const PRICE_PER_PIXEL_INR = 100;
+export const PRICE_PER_PIXEL_INR = 50;
 
 export const SITE_NAME = "kamalvscockroach.com";
 export const SITE_URL =

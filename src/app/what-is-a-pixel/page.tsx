@@ -2,7 +2,7 @@ import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
 import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
 import { TaxDisclaimer } from "@/components/TaxDisclaimer";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SITE_NAME } from "@/lib/config";
+import { PRICE_PER_PIXEL_INR, SITE_NAME } from "@/lib/config";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const STEPS = [
   { num: "01", text: "Pick a side — Team Kamal 🪷 or Team Cockroach 🪳." },
   { num: "02", text: "Click a square on that side's canvas (or buy many at once)." },
-  { num: "03", text: "Pay ₹100 per pixel." },
+  { num: "03", text: `Pay ₹${PRICE_PER_PIXEL_INR.toLocaleString("en-IN")} per pixel.` },
   { num: "04", text: "That square lights up and reveals a piece of the hidden image." },
   { num: "05", text: "Your pixel count pushes your team ahead in the live battle." },
 ] as const;
