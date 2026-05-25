@@ -8,6 +8,7 @@ import { PurchasePanel } from "@/components/PurchasePanel";
 import { PurchaseReceipt, type PurchaseReceiptData } from "@/components/PurchaseReceipt";
 import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
 import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
+import { HomeBusinessStrip } from "@/components/HomeBusinessStrip";
 import { SiteFooter } from "@/components/SiteFooter";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
@@ -559,6 +560,8 @@ export default function HomePage() {
           onConfirm={(count) => handleBulkBuy(bulkSide, count)}
         />
       )}
+
+      <HomeBusinessStrip />
 
       <SiteFooter />
     </div>

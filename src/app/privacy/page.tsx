@@ -1,15 +1,15 @@
 import { PLATFORM_NATURE_DISCLAIMER } from "@/components/PlatformNatureDisclaimer";
+import { LegalBusinessDetails } from "@/components/legal/LegalBusinessDetails";
 import { LegalList, LegalPageShell, LegalSection } from "@/components/legal/LegalPageShell";
 import { SiteFooter } from "@/components/SiteFooter";
-import { BUSINESS_NAME, SITE_NAME, SITE_URL, SUPPORT_EMAIL } from "@/lib/config";
+import { LEGAL_LAST_UPDATED } from "@/lib/business";
+import { BUSINESS_NAME, SITE_NAME } from "@/lib/config";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — KAMAL vs COCKROACH",
   description: "How we collect, use, and protect your information on kamalvscockroach.com.",
 };
-
-const LAST_UPDATED = "24 May 2026";
 
 export default function PrivacyPage() {
   return (
@@ -18,21 +18,14 @@ export default function PrivacyPage() {
         badge="Legal"
         title="Privacy Policy"
         subtitle={`How ${BUSINESS_NAME} handles your information when you use ${SITE_NAME}.`}
-        lastUpdated={LAST_UPDATED}
+        lastUpdated={LEGAL_LAST_UPDATED}
       >
-        <LegalSection title="Platform purpose">
-          <p>{PLATFORM_NATURE_DISCLAIMER}</p>
+        <LegalSection title="Operator">
+          <LegalBusinessDetails />
         </LegalSection>
 
-        <LegalSection title="Who we are">
-          <p>
-            This website ({SITE_URL}) is operated by <strong className="text-white">{BUSINESS_NAME}</strong>{" "}
-            (&ldquo;we&rdquo;, &ldquo;us&rdquo;). If you have questions about this policy, contact us at{" "}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--kamal-bright)] underline">
-              {SUPPORT_EMAIL}
-            </a>
-            .
-          </p>
+        <LegalSection title="Platform purpose">
+          <p>{PLATFORM_NATURE_DISCLAIMER}</p>
         </LegalSection>
 
         <LegalSection title="What we collect">
@@ -120,12 +113,7 @@ export default function PrivacyPage() {
         </LegalSection>
 
         <LegalSection title="Contact">
-          <p>
-            Email:{" "}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--kamal-bright)] underline">
-              {SUPPORT_EMAIL}
-            </a>
-          </p>
+          <LegalBusinessDetails showOperatorLine={false} />
         </LegalSection>
       </LegalPageShell>
       <SiteFooter />

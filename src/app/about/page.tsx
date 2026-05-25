@@ -1,4 +1,5 @@
 import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
+import { LegalBusinessDetails } from "@/components/legal/LegalBusinessDetails";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SITE_NAME } from "@/lib/config";
 import Link from "next/link";
@@ -147,6 +148,15 @@ export default function AboutPage() {
               The internet remembers.
             </p>
           </div>
+
+          <AboutSection accent="neutral" badge="Business" title="About us — operator details">
+            <LegalBusinessDetails />
+            <p className="mt-4">
+              <a href="/products" className="text-[var(--kamal-bright)] underline hover:text-white">
+                View products &amp; prices (INR)
+              </a>
+            </p>
+          </AboutSection>
 
           <AboutSection accent="neutral" badge="Disclaimer" title="Independent project">
             <p>

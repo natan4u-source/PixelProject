@@ -18,6 +18,7 @@ type Props = {
 };
 
 export function PurchasePanel({
+  side,
   sideLabel,
   x,
   y,
@@ -29,7 +30,7 @@ export function PurchasePanel({
   onBuy,
   onClear,
 }: Props) {
-  const isKamal = side === "a";
+  const isKamal = side === "a" || sideLabel?.toLowerCase().includes("canvas a") === true;
 
   return (
     <div className="rounded-xl border border-white/10 bg-[var(--surface-elevated)] p-5 shadow-xl">
