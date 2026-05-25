@@ -1,3 +1,7 @@
+import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
+import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
+import { TaxDisclaimer } from "@/components/TaxDisclaimer";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SITE_NAME } from "@/lib/config";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -27,6 +31,7 @@ export default function AboutPage() {
             <div className="battle-bar-kamal w-1/2" />
             <div className="battle-bar-cockroach w-1/2" />
           </div>
+          <PlatformNatureDisclaimer className="mx-auto mt-5 max-w-lg text-center" />
         </div>
 
         <article className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
@@ -52,7 +57,9 @@ export default function AboutPage() {
               </li>
               <li className="flex gap-3">
                 <span className="text-[var(--accent)]">→</span>
-                <span>Pixels cost ₹100 each. Buy one or buy in bulk.</span>
+                <span>
+                  Pixels cost ₹100 each (plus applicable taxes at checkout). Buy one or buy in bulk.
+                </span>
               </li>
               <li className="flex gap-3">
                 <span className="text-[var(--accent)]">→</span>
@@ -66,6 +73,8 @@ export default function AboutPage() {
                 </span>
               </li>
             </ul>
+            <TaxDisclaimer className="mt-3" />
+            <PermanenceDisclaimer className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3" />
           </AboutSection>
 
           <AboutSection accent="neutral" badge="Why it exists" title="A canvas for the people">
@@ -102,9 +111,9 @@ export default function AboutPage() {
           </div>
         </div>
 
-        <footer className="mt-12 border-t border-white/5 pt-8 text-center text-xs text-[var(--muted)]">
-          <p className="font-semibold tracking-wide text-white/40">{SITE_NAME}</p>
-        </footer>
+        <div className="mt-12">
+          <SiteFooter />
+        </div>
       </div>
     </div>
   );

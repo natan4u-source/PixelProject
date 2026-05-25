@@ -5,8 +5,10 @@ import { AnalyticsBeacon } from "@/components/AnalyticsBeacon";
 import { PixelGrid } from "@/components/PixelGrid";
 import { PurchasePanel } from "@/components/PurchasePanel";
 import { PurchaseReceipt, type PurchaseReceiptData } from "@/components/PurchaseReceipt";
+import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
+import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
+import { SiteFooter } from "@/components/SiteFooter";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
-import { SITE_NAME } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -398,6 +400,8 @@ export default function HomePage() {
       <p className="mt-2 max-w-xs text-[10px] leading-relaxed text-white/40">
         *Every pixel you buy stays on the canvas permanently.
       </p>
+      <PermanenceDisclaimer className="mx-auto mt-3 max-w-xs text-left" />
+      <PlatformNatureDisclaimer className="mx-auto mt-3 max-w-xs text-left" />
 
       <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[10px] uppercase tracking-[0.15em] text-white/40">
         <span>🛡️ Secure</span>
@@ -548,17 +552,12 @@ export default function HomePage() {
         />
       )}
 
-      <footer className="border-t border-white/5 py-8 text-center text-xs text-[var(--muted)]">
-        <p className="font-semibold tracking-wide text-white/40">{SITE_NAME}</p>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-          <Link href="/about" className="underline hover:text-white">
-            About
-          </Link>
-          <Link href="/admin" className="underline hover:text-white">
-            Admin panel
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
+      <p className="pb-6 text-center text-xs text-[var(--muted)]">
+        <Link href="/admin" className="underline hover:text-white">
+          Admin panel
+        </Link>
+      </p>
     </div>
   );
 }

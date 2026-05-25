@@ -1,5 +1,7 @@
 "use client";
 
+import { TaxDisclaimer } from "@/components/TaxDisclaimer";
+
 type Props = {
   sideLabel?: string;
   x: number;
@@ -61,6 +63,7 @@ export function PurchasePanel({
           >
             {priceLabel}
           </p>
+          {paymentsEnabled && <TaxDisclaimer className="mt-2" />}
           <button
             type="button"
             disabled={loading}

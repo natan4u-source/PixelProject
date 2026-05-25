@@ -1,5 +1,6 @@
 "use client";
 
+import { TaxDisclaimer } from "@/components/TaxDisclaimer";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -95,6 +96,8 @@ export function BulkBuyModal({
                 </span>
               </p>
             )}
+
+            {valid && paymentsEnabled && <TaxDisclaimer className="mt-2" />}
 
             {valid && (
               <p className="mt-2 text-xs text-[var(--muted)]">

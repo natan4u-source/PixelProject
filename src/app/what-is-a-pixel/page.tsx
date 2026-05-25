@@ -1,3 +1,7 @@
+import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
+import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
+import { TaxDisclaimer } from "@/components/TaxDisclaimer";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SITE_NAME } from "@/lib/config";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -63,6 +67,7 @@ export default function WhatIsAPixelPage() {
             <div className="battle-bar-kamal w-1/2" />
             <div className="battle-bar-cockroach w-1/2" />
           </div>
+          <PlatformNatureDisclaimer className="mx-auto mt-5 max-w-lg text-center" />
         </div>
 
         <article className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
@@ -112,6 +117,7 @@ export default function WhatIsAPixelPage() {
               <p className="text-sm font-bold text-white">This page will never reset.</p>
               <p className="text-sm font-bold text-[var(--accent)]">Your support stays forever*</p>
             </div>
+            <PermanenceDisclaimer className="mt-3" />
           </GuideSection>
 
           <GuideSection accent="cockroach" badge="How to buy" title="What happens when you buy one">
@@ -132,6 +138,7 @@ export default function WhatIsAPixelPage() {
               Before you buy, a pixel looks like a dark hidden square. After you buy, the colour
               shows — like scratching off one piece of a mystery picture.
             </p>
+            <TaxDisclaimer className="mt-4" />
           </GuideSection>
 
           <GuideSection accent="neutral" badge="Why buy" title="Why people buy pixels">
@@ -183,17 +190,9 @@ export default function WhatIsAPixelPage() {
           </div>
         </div>
 
-        <footer className="mt-12 border-t border-white/5 pt-8 text-center text-xs text-[var(--muted)]">
-          <p className="font-semibold tracking-wide text-white/40">{SITE_NAME}</p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <Link href="/" className="underline hover:text-white">
-              Home
-            </Link>
-            <Link href="/#canvases" className="underline hover:text-white">
-              Buy pixels
-            </Link>
-          </div>
-        </footer>
+        <div className="mt-12">
+          <SiteFooter />
+        </div>
       </div>
     </div>
   );
