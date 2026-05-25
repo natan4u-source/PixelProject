@@ -324,7 +324,7 @@ async function seedSide(side) {
     type: "bulk",
     purchasedAt,
     pixelCount: count,
-    totalInr: count * 100,
+    totalInr: count * 50,
     region: "center-vertical-third",
     xRange: [X_CENTER_START, X_CENTER_END],
     pixels: records.slice(0, 50).map(({ x, y, color }) => ({ x, y, color })),
@@ -403,7 +403,7 @@ async function addSide(side, addCount) {
     type: "bulk",
     purchasedAt,
     pixelCount: records.length,
-    totalInr: records.length * 100,
+    totalInr: records.length * 50,
     region: "center-vertical-third",
     xRange: [X_CENTER_START, X_CENTER_END],
     note: "Added pixels to center strip",
@@ -426,7 +426,13 @@ loadEnvFile();
 await fs.mkdir(DATA, { recursive: true });
 
 const mode = process.argv[2];
-if (mode === "add") {
+if (mode === "reset") {
+  for (const side of SIDES) {
+    console.log(`\n=== Reset side ${side.toUpperCase()} → 0 pixels ===`);
+    await clearSide(side);
+  }
+  console.log("\nDone. Both sides cleared to 0 sold pixels.");
+} else if (mode === "add") {
   const side = (process.argv[3] ?? "a").toLowerCase();
   const addCount = parseInt(process.argv[4] ?? "", 10);
   if (side !== "a" && side !== "b") {
