@@ -30,7 +30,7 @@ export function PurchasePanel({
   onBuy,
   onClear,
 }: Props) {
-  const isKamal = side === "a" || sideLabel?.toLowerCase().includes("canvas a") === true;
+  const isKamal = side === "a" || sideLabel?.toLowerCase().includes("kamal");
 
   return (
     <div className="rounded-xl border border-white/10 bg-[var(--surface-elevated)] p-5 shadow-xl">
@@ -59,7 +59,7 @@ export function PurchasePanel({
       {ready && !isSold && (
         <>
           <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
-            Buy this pixel to permanently reveal that spot on the public canvas and add to the collective image.
+            Buy this pixel to permanently reveal that spot and push your side ahead in the battle.
           </p>
           <p
             className={`mt-3 text-lg font-semibold ${isKamal ? "text-[var(--kamal)]" : "text-[var(--cockroach)]"}`}

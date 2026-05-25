@@ -2,10 +2,8 @@ import { PERMANENCE_DISCLAIMER } from "@/components/PermanenceDisclaimer";
 import { PLATFORM_NATURE_DISCLAIMER } from "@/components/PlatformNatureDisclaimer";
 import { FORCE_MAJEURE_DISCLAIMER } from "@/components/ForceMajeureDisclaimer";
 import { TAX_DISCLAIMER } from "@/components/TaxDisclaimer";
-import { LegalBusinessDetails } from "@/components/legal/LegalBusinessDetails";
 import { LegalList, LegalPageShell, LegalSection } from "@/components/legal/LegalPageShell";
 import { SiteFooter } from "@/components/SiteFooter";
-import { LEGAL_LAST_UPDATED, PRODUCTS } from "@/lib/business";
 import {
   BUSINESS_NAME,
   PRICE_PER_PIXEL_INR,
@@ -20,6 +18,8 @@ export const metadata: Metadata = {
   description: "Terms of use and purchase for kamalvscockroach.com pixel purchases.",
 };
 
+const LAST_UPDATED = "24 May 2026";
+
 export default function TermsPage() {
   return (
     <>
@@ -27,44 +27,22 @@ export default function TermsPage() {
         badge="Legal"
         title="Terms & Conditions"
         subtitle={`Rules for using ${SITE_NAME} and buying pixels.`}
-        lastUpdated={LEGAL_LAST_UPDATED}
+        lastUpdated={LAST_UPDATED}
       >
-        <LegalSection title="Operator">
-          <LegalBusinessDetails />
-        </LegalSection>
-
         <LegalSection title="Agreement">
           <p>
             By accessing {SITE_URL} or buying pixels, you agree to these Terms & Conditions. If you do
-            not agree, do not use the site or make a purchase.
-          </p>
-        </LegalSection>
-
-        <LegalSection title="Products and pricing (INR)">
-          <div className="space-y-4">
-            {PRODUCTS.map((product) => (
-              <div key={product.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
-                <p className="font-semibold text-white">{product.name}</p>
-                <p className="mt-1 text-sm">{product.description}</p>
-                <p className="mt-2 font-mono text-[var(--kamal-bright)]">
-                  ₹{product.priceInr.toLocaleString("en-IN")} {product.unit}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3">
-            <a href="/products" className="text-[var(--kamal-bright)] underline">
-              Full product listing
-            </a>
+            not agree, do not use the site or make a purchase. The operator is{" "}
+            <strong className="text-white">{BUSINESS_NAME}</strong>.
           </p>
         </LegalSection>
 
         <LegalSection title="The service">
           <LegalList
             items={[
-              `${SITE_NAME} is an interactive pixel canvas where visitors buy individual pixels on Canvas A or Canvas B.`,
+              `${SITE_NAME} is an interactive pixel canvas where visitors buy individual pixels on Team Kamal or Team Cockroach sides.`,
               "Each side has a hidden image that is revealed as pixels are sold.",
-              "Pixel sales are counted publicly on each canvas.",
+              "Pixel sales are counted publicly in a live battle score.",
               "The canvas is designed not to reset; purchased pixels remain visible as described on the site.",
             ]}
           />
@@ -107,10 +85,10 @@ export default function TermsPage() {
         <LegalSection title="No guarantees">
           <LegalList
             items={[
-              "We do not guarantee uninterrupted access, error-free operation, or a particular purchase count on either canvas.",
+              "We do not guarantee uninterrupted access, error-free operation, or a particular battle outcome.",
               "We may perform maintenance, updates, or changes that briefly affect availability.",
               "Outages beyond our reasonable control are addressed under “Force majeure” below.",
-              "Canvas branding and hidden images are artistic and expressive; see “Nature of the platform” above.",
+              "Team branding and hidden images are artistic and expressive; see “Nature of the platform” above.",
             ]}
           />
         </LegalSection>
@@ -155,22 +133,21 @@ export default function TermsPage() {
           </p>
         </LegalSection>
 
-        <LegalSection title="Other policies">
-          <LegalList
-            items={[
-              "Privacy Policy — /privacy",
-              "Return & Refund Policy — /refund",
-              "Cancellation Policy — /cancellation",
-              "Shipping Policy — /shipping",
-              "Cash on Delivery (COD) — /cod",
-              "Contact — /contact",
-            ]}
-          />
-          <p className="mt-3">
-            Questions:{" "}
+        <LegalSection title="Contact">
+          <p>
+            Questions about these terms:{" "}
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--kamal-bright)] underline">
               {SUPPORT_EMAIL}
             </a>
+            . See also our{" "}
+            <a href="/privacy" className="text-[var(--kamal-bright)] underline">
+              Privacy Policy
+            </a>{" "}
+            and{" "}
+            <a href="/refund" className="text-[var(--kamal-bright)] underline">
+              Refund Policy
+            </a>
+            .
           </p>
         </LegalSection>
       </LegalPageShell>

@@ -36,23 +36,23 @@ type SelectedPixel = {
 const FEATURES = [
   {
     title: "BUY PIXELS",
-    body: "Pick any canvas and purchase one or many pixels.",
+    body: "Choose any canvas. Buy pixels on your side.",
     icon: "🎯",
   },
   {
     title: "REVEAL TOGETHER",
-    body: "Every purchase permanently reveals that spot on the image.",
+    body: "Every pixel you buy reveals the hidden image.",
     icon: "✨",
   },
   {
-    title: "PART OF HISTORY",
-    body: "Your pixels stay on the public canvas as a lasting record.",
-    icon: "📜",
+    title: "SHIFT THE BATTLE",
+    body: "Your pixels push your side ahead in the battle.",
+    icon: "⚔️",
   },
   {
-    title: "WATCH IT GROW",
-    body: "As more pixels are bought, the full picture slowly appears.",
-    icon: "🖼️",
+    title: "SEE THE VICTORY",
+    body: "When your side wins, the full image is revealed!",
+    icon: "🏆",
   },
 ] as const;
 
@@ -254,7 +254,7 @@ export default function HomePage() {
         const receiptData = await payOnline(
           side,
           { type: "single", x, y },
-          `Pixel (${x}, ${y}) · ${SIDE_INFO[side].label}`,
+          `${SIDE_INFO[side].label} pixel (${x}, ${y})`,
         );
         await finishPurchase(side, receiptData, { x, y });
       } else {
@@ -291,7 +291,7 @@ export default function HomePage() {
         const receiptData = await payOnline(
           side,
           { type: "bulk", count },
-          `${count.toLocaleString("en-IN")} pixels · ${SIDE_INFO[side].label}`,
+          `${count.toLocaleString("en-IN")} pixels on ${SIDE_INFO[side].label}`,
         );
         setBulkOpenForSide(null);
         await finishPurchase(side, receiptData);
@@ -355,7 +355,7 @@ export default function HomePage() {
                   : "bg-[var(--cockroach)] text-black hover:brightness-110"
               }`}
             >
-              Buy pixels
+              {isKamal ? "Support Kamal" : "Support Cockroach"}
             </button>
           </div>
 
@@ -389,7 +389,7 @@ export default function HomePage() {
                     : "bg-[var(--cockroach)]/30 text-[var(--cockroach-bright)]"
                 }`}
               >
-                Most pixels purchased
+                👑 Currently winning
               </p>
             )}
             {battleLeader === "tie" && totalBattleSold > 0 && (
@@ -400,7 +400,7 @@ export default function HomePage() {
             <p className={`war-title text-3xl sm:text-4xl ${isKamal ? "war-title-kamal" : "war-title-cockroach"}`}>
               {sold.toLocaleString("en-IN")}
             </p>
-            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-white/45">pixels purchased</p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-white/45">pixels sold</p>
             {status && (
               <p className="mt-1.5 text-xs text-[var(--muted)]">
                 {status.remaining.toLocaleString("en-IN")} left · ₹{status.pricePerPixelInr}/px
@@ -440,7 +440,7 @@ export default function HomePage() {
   const heroCenter = (
     <div className="hero-center order-1 flex w-full shrink-0 flex-col items-center justify-center px-4 py-6 text-center lg:order-2 lg:w-[min(100%,360px)] lg:px-5 lg:py-8">
       <p className="live-badge rounded-full border border-[var(--kamal)]/40 bg-[var(--kamal)]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--kamal-bright)] sm:text-xs">
-        Live pixel canvas
+        🔥 Live Pixel War 🔥
       </p>
       <h1 className="war-title mt-4 flex flex-col items-center gap-1 sm:gap-2">
         <span className="war-title-kamal text-4xl sm:text-5xl xl:text-6xl">KAMAL</span>
@@ -448,7 +448,7 @@ export default function HomePage() {
         <span className="war-title-cockroach text-4xl sm:text-5xl xl:text-6xl">COCKROACH</span>
       </h1>
       <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/85">
-        Buy a pixel. Be part of history.
+        Choose a side. Buy pixels. Reveal the future.
       </p>
 
       <div className="forever-pledge mt-5 w-full max-w-xs rounded-xl px-4 py-3.5">
@@ -456,7 +456,7 @@ export default function HomePage() {
           This page will never reset.
         </p>
         <p className="mt-1 text-sm font-bold leading-snug tracking-wide text-[var(--accent)] sm:text-base">
-          Your pixels stay forever*
+          Your support stays forever*
         </p>
       </div>
       <p className="mt-2 max-w-xs text-[10px] leading-relaxed text-white/40">
@@ -488,30 +488,31 @@ export default function HomePage() {
         <BattleAmbient />
 
         <div className="relative z-[1] mx-auto max-w-[1800px] px-3 sm:px-4">
-          {/* Live stats strip */}
+          {/* Battle is live — top strip */}
           <div
-            id="stats"
+            id="battle"
             className="battle-live-strip relative z-[1] mb-4 rounded-2xl border border-white/15 bg-[var(--surface-elevated)]/95 p-4 backdrop-blur-md sm:p-5"
           >
             <h2 className="text-center text-xs font-bold uppercase tracking-[0.25em] text-white/80 sm:text-sm">
-              Live participation
+              The Battle is Live
             </h2>
 
             {battleLeader && battleLeader !== "tie" && (
               <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-white/55 sm:text-xs">
+                👑{" "}
                 <span
                   className={
                     battleLeader === "a" ? "text-[var(--kamal-bright)]" : "text-[var(--cockroach-bright)]"
                   }
                 >
-                  {SIDE_INFO[battleLeader].label} has more pixels purchased
+                  {SIDE_INFO[battleLeader].teamName} is ahead
                 </span>
               </p>
             )}
 
             {battleLeader === "tie" && totalBattleSold > 0 && (
               <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-white/55 sm:text-xs">
-                Even — same number of pixels purchased
+                ⚖️ Dead heat — tied on pixels sold
               </p>
             )}
 
@@ -535,7 +536,7 @@ export default function HomePage() {
             </div>
 
             <p className="mt-2 text-center text-[10px] uppercase tracking-[0.15em] text-white/35 sm:text-xs">
-              {totalBattleSold.toLocaleString("en-IN")} pixels purchased across both canvases
+              {totalBattleSold.toLocaleString("en-IN")} pixels sold in the war
             </p>
           </div>
 
@@ -573,7 +574,7 @@ export default function HomePage() {
               />
             ) : (
               <div className="rounded-xl border border-dashed border-white/10 bg-[var(--surface)]/50 p-5 text-center text-sm text-[var(--muted)]">
-                Click a pixel on either canvas to buy and reveal the image.{" "}
+                Click a pixel on either canvas to buy and shift the battle.{" "}
                 <Link href="/what-is-a-pixel" className="text-[var(--kamal-bright)] underline hover:text-white">
                   New here? Learn what a pixel is
                 </Link>

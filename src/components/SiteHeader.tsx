@@ -45,7 +45,7 @@ export function SiteHeader() {
             href="/#canvases"
             className="war-btn-kamal ml-1 hidden rounded-lg px-3.5 py-2 text-[10px] font-bold uppercase tracking-wide sm:inline-block sm:text-xs"
           >
-            Buy pixels
+            Join battle
           </Link>
         </nav>
       </div>

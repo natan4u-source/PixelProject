@@ -21,12 +21,12 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "KAMAL vs COCKROACH — Live Pixel Canvas",
-  description: "Buy a pixel. Be part of history. Reveal the image one square at a time.",
+  title: "KAMAL vs COCKROACH — Live Pixel War",
+  description: "Choose a side. Buy pixels. Reveal the future.",
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: "KAMAL vs COCKROACH — Live Pixel Canvas",
-    description: "Buy a pixel. Be part of history. Reveal the image one square at a time.",
+    title: "KAMAL vs COCKROACH — Live Pixel War",
+    description: "Choose a side. Buy pixels. Reveal the future.",
     url: SITE_URL,
     siteName: SITE_NAME,
   },

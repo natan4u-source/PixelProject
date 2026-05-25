@@ -57,7 +57,7 @@ export function BulkBuyModal({
           Buy pixels
         </h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          ₹{pricePerPixelInr} per pixel · up to {maxPixels.toLocaleString("en-IN")} available on this canvas
+          ₹{pricePerPixelInr} per pixel · up to {maxPixels.toLocaleString("en-IN")} available on this side
         </p>
 
         {!ready && (
