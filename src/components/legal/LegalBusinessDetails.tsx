@@ -1,5 +1,11 @@
 import { BUSINESS_NAME, SUPPORT_EMAIL } from "@/lib/config";
-import { BUSINESS_PHONE, formatBusinessAddress, operatorLine } from "@/lib/business";
+import {
+  BUSINESS_GSTIN,
+  BUSINESS_PHONE,
+  businessPhoneTel,
+  formatBusinessAddress,
+  operatorLine,
+} from "@/lib/business";
 
 type Props = {
   showOperatorLine?: boolean;
@@ -32,9 +38,15 @@ export function LegalBusinessDetails({ showOperatorLine = true, className = "" }
       {BUSINESS_PHONE ? (
         <p>
           <span className="text-white/50">Mobile:</span>{" "}
-          <a href={`tel:${BUSINESS_PHONE.replace(/\s/g, "")}`} className="text-[var(--kamal-bright)] underline">
+          <a href={`tel:${businessPhoneTel()}`} className="text-[var(--kamal-bright)] underline">
             {BUSINESS_PHONE}
           </a>
+        </p>
+      ) : null}
+      {BUSINESS_GSTIN ? (
+        <p>
+          <span className="text-white/50">GSTIN:</span>{" "}
+          <span className="font-mono text-white">{BUSINESS_GSTIN}</span>
         </p>
       ) : null}
     </div>

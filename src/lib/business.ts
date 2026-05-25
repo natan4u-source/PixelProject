@@ -1,19 +1,26 @@
 import { BUSINESS_NAME, PRICE_PER_PIXEL_INR } from "./config";
 
-/** Registered address (as per Aadhaar / business records) — set via env before gateway review */
-export const BUSINESS_ADDRESS = process.env.NEXT_PUBLIC_BUSINESS_ADDRESS?.trim() || "";
+/** Registered address — env overrides defaults for production */
+export const BUSINESS_ADDRESS_LINE1 =
+  process.env.NEXT_PUBLIC_BUSINESS_ADDRESS?.trim() || "parel house";
+
+export const BUSINESS_ADDRESS_LINE2 =
+  process.env.NEXT_PUBLIC_BUSINESS_ADDRESS_LINE2?.trim() || "the village";
 
 export const BUSINESS_CITY =
-  process.env.NEXT_PUBLIC_BUSINESS_CITY?.trim() || "";
+  process.env.NEXT_PUBLIC_BUSINESS_CITY?.trim() || "kochi";
 
 export const BUSINESS_STATE =
-  process.env.NEXT_PUBLIC_BUSINESS_STATE?.trim() || "";
+  process.env.NEXT_PUBLIC_BUSINESS_STATE?.trim() || "kerala";
 
 export const BUSINESS_PINCODE =
-  process.env.NEXT_PUBLIC_BUSINESS_PINCODE?.trim() || "";
+  process.env.NEXT_PUBLIC_BUSINESS_PINCODE?.trim() || "682308";
 
 export const BUSINESS_PHONE =
-  process.env.NEXT_PUBLIC_BUSINESS_PHONE?.trim() || "";
+  process.env.NEXT_PUBLIC_BUSINESS_PHONE?.trim() || "+91 76785 71962";
+
+export const BUSINESS_GSTIN =
+  process.env.NEXT_PUBLIC_BUSINESS_GSTIN?.trim() || "32AUZPA3872H2ZD";
 
 export const LEGAL_LAST_UPDATED = "23 May 2026";
 
@@ -47,13 +54,17 @@ export const PRODUCTS = [
 ] as const;
 
 export function formatBusinessAddress(): string {
-  if (!BUSINESS_ADDRESS && !BUSINESS_CITY && !BUSINESS_STATE && !BUSINESS_PINCODE) {
-    return "—";
-  }
-  const parts = BUSINESS_ADDRESS ? [BUSINESS_ADDRESS] : [];
+  const lines = [BUSINESS_ADDRESS_LINE1, BUSINESS_ADDRESS_LINE2].filter(Boolean);
   const locality = [BUSINESS_CITY, BUSINESS_STATE, BUSINESS_PINCODE].filter(Boolean).join(", ");
-  if (locality) parts.push(locality);
-  return parts.join("\n");
+  if (locality) lines.push(locality);
+  return lines.join("\n");
+}
+
+export function businessPhoneTel(): string {
+  const digits = BUSINESS_PHONE.replace(/\D/g, "");
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.startsWith("91") && digits.length === 12) return `+${digits}`;
+  return BUSINESS_PHONE.replace(/\s/g, "");
 }
 
 export function operatorLine(): string {
