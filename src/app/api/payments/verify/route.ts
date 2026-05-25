@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-error";
-import { verifyAndFulfillPayment } from "@/lib/payments";
+import {
+  verifyAndFulfillCashfreePayment,
+  verifyAndFulfillPayment,
+} from "@/lib/payments";
+import { getActivePaymentProvider } from "@/lib/env";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +15,8 @@ export async function POST(request: Request) {
     if (!limit.allowed) return rateLimitResponse(60);
 
     let body: {
+      provider?: string;
+      order_id?: string;
       razorpay_order_id?: string;
       razorpay_payment_id?: string;
       razorpay_signature?: string;
@@ -20,6 +26,18 @@ export async function POST(request: Request) {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    const provider = body.provider ?? getActivePaymentProvider();
+
+    if (provider === "cashfree") {
+      const orderId = body.order_id;
+      if (typeof orderId !== "string" || !orderId) {
+        return NextResponse.json({ error: "Missing order id." }, { status: 400 });
+      }
+
+      const receipt = await verifyAndFulfillCashfreePayment(orderId);
+      return NextResponse.json({ receipt });
     }
 
     const razorpayOrderId = body.razorpay_order_id;
@@ -43,7 +61,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ receipt });
   } catch (err) {
     if (err instanceof Error) {
-      if (err.message.includes("verification failed")) {
+      if (
+        err.message.includes("verification failed") ||
+        err.message.includes("not completed") ||
+        err.message.includes("mismatch")
+      ) {
         return NextResponse.json({ error: err.message }, { status: 400 });
       }
       if (

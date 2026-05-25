@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
-import { isProduction, isRazorpayEnabled } from "@/lib/env";
+import { isPaymentsEnabled, isProduction } from "@/lib/env";
 
 export function blockDemoPurchaseWhenPaymentsEnabled() {
-  if (isProduction() && !isRazorpayEnabled()) {
+  if (isProduction() && !isPaymentsEnabled()) {
     return NextResponse.json(
       { error: "Payments are not configured." },
       { status: 503 },
     );
   }
 
-  if (!isRazorpayEnabled()) return null;
+  if (!isPaymentsEnabled()) return null;
 
   return NextResponse.json(
-    { error: "Demo checkout is disabled. Please pay with Razorpay." },
+    { error: "Demo checkout is disabled. Please pay online at checkout." },
     { status: 403 },
   );
 }

@@ -1,3 +1,5 @@
+export type PaymentProvider = "cashfree" | "razorpay";
+
 export function getDatabaseUrl() {
   return process.env.DATABASE_URL?.trim() || null;
 }
@@ -38,6 +40,39 @@ export function getRazorpayWebhookSecret() {
 
 export function isRazorpayEnabled() {
   return Boolean(getRazorpayKeyId() && getRazorpayKeySecret());
+}
+
+export function getCashfreeAppId() {
+  return process.env.CASHFREE_APP_ID?.trim() || null;
+}
+
+export function getCashfreeSecret() {
+  return process.env.CASHFREE_SECRET_KEY?.trim() || null;
+}
+
+export function getCashfreeApiVersion() {
+  return process.env.CASHFREE_API_VERSION?.trim() || "2023-08-01";
+}
+
+/** sandbox | production */
+export function getCashfreeEnv() {
+  const raw = process.env.CASHFREE_ENV?.trim().toLowerCase();
+  if (raw === "production" || raw === "prod") return "production";
+  return "sandbox";
+}
+
+export function isCashfreeEnabled() {
+  return Boolean(getCashfreeAppId() && getCashfreeSecret());
+}
+
+export function getActivePaymentProvider(): PaymentProvider | null {
+  if (isCashfreeEnabled()) return "cashfree";
+  if (isRazorpayEnabled()) return "razorpay";
+  return null;
+}
+
+export function isPaymentsEnabled() {
+  return getActivePaymentProvider() !== null;
 }
 
 export function isProduction() {

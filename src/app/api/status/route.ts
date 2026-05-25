@@ -5,7 +5,14 @@ import {
   getCachedStatus,
   setCachedStatus,
 } from "@/lib/cache";
-import { getStatusCacheTtlSec, getRazorpayKeyId, isPostgresEnabled, isRazorpayEnabled } from "@/lib/env";
+import {
+  getActivePaymentProvider,
+  getCashfreeEnv,
+  getRazorpayKeyId,
+  getStatusCacheTtlSec,
+  isPaymentsEnabled,
+  isPostgresEnabled,
+} from "@/lib/env";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { ensureSalesMigrated } from "@/lib/migrate-sales";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -57,7 +64,9 @@ export async function GET(request: Request) {
 
       const body = JSON.stringify({
         sides,
-        paymentsEnabled: isRazorpayEnabled(),
+        paymentsEnabled: isPaymentsEnabled(),
+        paymentProvider: getActivePaymentProvider(),
+        cashfreeEnv: getCashfreeEnv(),
         razorpayKeyId: getRazorpayKeyId(),
       });
 
@@ -84,7 +93,9 @@ export async function GET(request: Request) {
     const status = await buildSideStatus(side);
     const body = JSON.stringify({
       ...status,
-      paymentsEnabled: isRazorpayEnabled(),
+      paymentsEnabled: isPaymentsEnabled(),
+      paymentProvider: getActivePaymentProvider(),
+      cashfreeEnv: getCashfreeEnv(),
       razorpayKeyId: getRazorpayKeyId(),
     });
 

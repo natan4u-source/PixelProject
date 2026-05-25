@@ -10,6 +10,7 @@ import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
 import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
 import { HomeBusinessStrip } from "@/components/HomeBusinessStrip";
 import { SiteFooter } from "@/components/SiteFooter";
+import { openCashfreeCheckout } from "@/lib/cashfree-client";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
 import Link from "next/link";
@@ -88,6 +89,48 @@ export default function HomePage() {
   }, [load]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("order_id");
+    if (!orderId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const verifyRes = await fetch("/api/payments/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider: "cashfree", order_id: orderId }),
+        });
+        const verifyData = await verifyRes.json();
+        if (cancelled) return;
+        if (!verifyRes.ok) {
+          setMessage(verifyData.error ?? "Payment verification failed.");
+          return;
+        }
+        const receipt = verifyData.receipt as PurchaseReceiptData;
+        const side = receipt.side ?? "a";
+        setReceipt(receipt);
+        bumpRevealed(side);
+        await load();
+        setMessage("Payment successful. Your pixels are on the canvas.");
+      } catch {
+        if (!cancelled) setMessage("Could not verify payment after redirect.");
+      } finally {
+        if (!cancelled) {
+          params.delete("order_id");
+          const qs = params.toString();
+          const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+          window.history.replaceState({}, "", next);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  useEffect(() => {
     if (!selected) {
       setSelectedIsSold(false);
       return;
@@ -142,7 +185,7 @@ export default function HomePage() {
     await load();
   };
 
-  const payWithRazorpay = async (
+  const payOnline = async (
     side: CanvasSide,
     payload: { type: "single"; x: number; y: number } | { type: "bulk"; count: number },
     description: string,
@@ -154,6 +197,22 @@ export default function HomePage() {
     });
     const orderData = await orderRes.json();
     if (!orderRes.ok) throw new Error(orderData.error ?? "Could not start payment.");
+
+    if (orderData.provider === "cashfree") {
+      await openCashfreeCheckout(orderData.paymentSessionId, orderData.cashfreeMode);
+
+      const verifyRes = await fetch("/api/payments/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "cashfree",
+          order_id: orderData.orderId,
+        }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) throw new Error(verifyData.error ?? "Payment verification failed.");
+      return verifyData.receipt as PurchaseReceiptData;
+    }
 
     const payment = await openRazorpayCheckout({
       keyId: orderData.keyId,
@@ -167,6 +226,7 @@ export default function HomePage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        provider: "razorpay",
         razorpay_order_id: payment.razorpay_order_id,
         razorpay_payment_id: payment.razorpay_payment_id,
         razorpay_signature: payment.razorpay_signature,
@@ -191,7 +251,7 @@ export default function HomePage() {
 
     try {
       if (paymentsEnabled) {
-        const receiptData = await payWithRazorpay(
+        const receiptData = await payOnline(
           side,
           { type: "single", x, y },
           `Pixel (${x}, ${y}) · ${SIDE_INFO[side].label}`,
@@ -228,7 +288,7 @@ export default function HomePage() {
 
     try {
       if (paymentsEnabled) {
-        const receiptData = await payWithRazorpay(
+        const receiptData = await payOnline(
           side,
           { type: "bulk", count },
           `${count.toLocaleString("en-IN")} pixels · ${SIDE_INFO[side].label}`,

@@ -7,10 +7,13 @@ const CLIENT_SAFE = new Set([
   "Payment order not found.",
   "Online payments are not configured yet.",
   "Razorpay is not configured.",
+  "Cashfree is not configured.",
+  "Payment not completed yet. Please wait and try again.",
+  "Could not create Cashfree order.",
   "Invalid payment order.",
   "Payment is being processed. Try again in a few seconds.",
   "Payments are not configured.",
-  "Demo checkout is disabled. Please pay with Razorpay.",
+  "Demo checkout is disabled. Please pay online at checkout.",
   "Forbidden.",
 ]);
 
