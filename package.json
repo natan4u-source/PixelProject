@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "migrate:postgres": "node scripts/migrate-to-postgres.mjs",
+    "seed:pixels": "node scripts/seed-random-pixels.mjs",
     "lint": "next lint"
   },
   "dependencies": {

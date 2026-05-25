@@ -1,5 +1,6 @@
 "use client";
 
+import { BattleAmbient } from "@/components/BattleAmbient";
 import { BulkBuyModal } from "@/components/BulkBuyModal";
 import { AnalyticsBeacon } from "@/components/AnalyticsBeacon";
 import { PixelGrid } from "@/components/PixelGrid";
@@ -271,7 +272,7 @@ export default function HomePage() {
         : "war-panel-cockroach";
 
     const accentText = isKamal ? "text-[var(--kamal)]" : "text-[var(--cockroach)]";
-    const hiddenColor = isKamal ? "#1a1208" : "#081a0c";
+    const hiddenColor = isKamal ? "#3d2e18" : "#183d22";
     const colClass = side === "a" ? "min-w-0 flex-1 lg:order-1" : "min-w-0 flex-1 lg:order-3";
 
     const sold = status?.sold ?? 0;
@@ -316,7 +317,7 @@ export default function HomePage() {
                 ? isKamal
                   ? "border-[var(--kamal)]/50 bg-[var(--kamal)]/10"
                   : "border-[var(--cockroach)]/50 bg-[var(--cockroach)]/10"
-                : "border-white/10 bg-black/30"
+                : "border-white/15 bg-white/5"
             }`}
           >
             {isWinning && (
@@ -357,7 +358,7 @@ export default function HomePage() {
               soldCount={status.sold}
               revealedUrl={revealedUrl}
               hiddenColor={hiddenColor}
-              containerClassName="hero-canvas-grid relative w-full overflow-hidden rounded-xl border border-[var(--border)] bg-black/50"
+              containerClassName="hero-canvas-grid relative w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-soft)]/80"
               selected={gridSelected}
               selectedIsSold={isSelectedSide ? selectedIsSold : false}
               onSelect={(x, y) => {
@@ -366,7 +367,7 @@ export default function HomePage() {
               }}
             />
           ) : (
-            <div className="hero-canvas-grid flex items-center justify-center rounded-xl border border-[var(--border)] bg-black/40 text-sm text-[var(--muted)]">
+            <div className="hero-canvas-grid flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-soft)]/60 text-sm text-[var(--muted)]">
               Loading…
             </div>
           )}
@@ -377,15 +378,15 @@ export default function HomePage() {
 
   const heroCenter = (
     <div className="hero-center order-1 flex w-full shrink-0 flex-col items-center justify-center px-4 py-6 text-center lg:order-2 lg:w-[min(100%,360px)] lg:px-5 lg:py-8">
-      <p className="rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--kamal-bright)] sm:text-xs">
+      <p className="live-badge rounded-full border border-[var(--kamal)]/40 bg-[var(--kamal)]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--kamal-bright)] sm:text-xs">
         🔥 Live Pixel War 🔥
       </p>
       <h1 className="war-title mt-4 flex flex-col items-center gap-1 sm:gap-2">
         <span className="war-title-kamal text-4xl sm:text-5xl xl:text-6xl">KAMAL</span>
-        <span className="text-2xl text-white/90 sm:text-3xl xl:text-4xl">VS</span>
+        <span className="war-vs-pulse text-2xl font-bold text-white sm:text-3xl xl:text-4xl">VS</span>
         <span className="war-title-cockroach text-4xl sm:text-5xl xl:text-6xl">COCKROACH</span>
       </h1>
-      <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/75">
+      <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/85">
         Choose a side. Buy pixels. Reveal the future.
       </p>
 
@@ -423,11 +424,15 @@ export default function HomePage() {
       {/* Hero arena */}
       <section id="canvases" className="relative overflow-hidden pt-3 sm:pt-4">
         <div className="hero-arena-glow pointer-events-none absolute inset-0" aria-hidden="true" />
+        <BattleAmbient />
 
-        <div className="relative mx-auto max-w-[1800px] px-3 sm:px-4">
+        <div className="relative z-[1] mx-auto max-w-[1800px] px-3 sm:px-4">
           {/* Battle is live — top strip */}
-          <div id="battle" className="mb-4 rounded-2xl border border-white/10 bg-[var(--surface-elevated)]/95 p-4 backdrop-blur-md sm:p-5">
-            <h2 className="text-center text-xs font-bold uppercase tracking-[0.25em] text-white/70 sm:text-sm">
+          <div
+            id="battle"
+            className="battle-live-strip relative z-[1] mb-4 rounded-2xl border border-white/15 bg-[var(--surface-elevated)]/95 p-4 backdrop-blur-md sm:p-5"
+          >
+            <h2 className="text-center text-xs font-bold uppercase tracking-[0.25em] text-white/80 sm:text-sm">
               The Battle is Live
             </h2>
 
@@ -454,7 +459,7 @@ export default function HomePage() {
               <span className="hidden shrink-0 text-right font-mono text-xs text-[var(--kamal)] sm:block sm:w-20">
                 {kamalSold.toLocaleString("en-IN")}
               </span>
-              <div className="flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-black/50 sm:h-3">
+              <div className="flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--bg-soft)] sm:h-3">
                 <div
                   className="battle-bar-kamal transition-all duration-700"
                   style={{ width: `${kamalShare}%` }}
@@ -525,11 +530,14 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="border-t border-white/5 bg-black/30 px-4 py-12 sm:px-6 sm:py-16">
+      <section
+        id="how-it-works"
+        className="border-t border-white/10 bg-[var(--bg-soft)]/80 px-4 py-12 sm:px-6 sm:py-16"
+      >
         <div className="mx-auto grid max-w-[1200px] gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((feature) => (
             <div key={feature.title} className="feature-card rounded-xl p-5 text-center">
-              <p className="text-2xl">{feature.icon}</p>
+              <p className="feature-icon-bounce text-3xl">{feature.icon}</p>
               <h3 className="mt-3 text-sm font-bold uppercase tracking-[0.15em]">{feature.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{feature.body}</p>
             </div>
