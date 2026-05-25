@@ -80,7 +80,16 @@ export async function recordVisitorView(input: {
     browser: parseBrowser(userAgent),
   };
 
+  const MAX_ANALYTICS_BYTES = 50 * 1024 * 1024;
   await fs.mkdir(DATA_DIR, { recursive: true });
+  try {
+    const stat = await fs.stat(VISITOR_EVENTS_PATH);
+    if (stat.size >= MAX_ANALYTICS_BYTES) {
+      return event;
+    }
+  } catch {
+    // file does not exist yet
+  }
   await fs.appendFile(VISITOR_EVENTS_PATH, JSON.stringify(event) + "\n", "utf8");
   return event;
 }

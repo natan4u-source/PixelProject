@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import Razorpay from "razorpay";
+import { timingSafeEqualString } from "./secrets";
 import {
   getRazorpayKeyId,
   getRazorpayKeySecret,
@@ -37,7 +38,7 @@ export function verifyPaymentSignature(
     .update(`${orderId}|${paymentId}`)
     .digest("hex");
 
-  return expected === signature;
+  return timingSafeEqualString(expected, signature);
 }
 
 export function verifyWebhookSignature(body: string, signature: string | null) {
@@ -45,7 +46,7 @@ export function verifyWebhookSignature(body: string, signature: string | null) {
   if (!secret || !signature) return false;
 
   const expected = crypto.createHmac("sha256", secret).update(body).digest("hex");
-  return expected === signature;
+  return timingSafeEqualString(expected, signature);
 }
 
 export function inrToPaise(amountInr: number) {

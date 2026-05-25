@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { getAdminApiBase } from "@/lib/admin-path";
 import { CANVAS_SIDES, DEFAULT_SIDE, SIDE_INFO, type CanvasSide } from "@/lib/sides";
+
+const ADMIN_API = getAdminApiBase();
 
 type AdminStats = {
   grid: { width: number; height: number };
@@ -47,7 +50,6 @@ type AnalyticsSummary = {
   }[];
 };
 
-const SECRET_KEY = "pixel-admin-secret";
 const PAGE_SIZE = 15;
 
 export default function AdminPage() {
@@ -69,11 +71,6 @@ export default function AdminPage() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [purchasesLoading, setPurchasesLoading] = useState(false);
 
-  useEffect(() => {
-    const saved = sessionStorage.getItem(SECRET_KEY);
-    if (saved) setSecret(saved);
-  }, []);
-
   const loadStats = useCallback(async (side: CanvasSide = activeSide) => {
     if (!secret) return;
     setStatsLoading(true);
@@ -81,11 +78,11 @@ export default function AdminPage() {
 
     try {
       const [sideRes, allRes] = await Promise.all([
-        fetch(`/api/admin/stats?side=${side}&t=${Date.now()}`, {
+        fetch(`${ADMIN_API}/stats?side=${side}&t=${Date.now()}`, {
           headers: { "x-admin-secret": secret },
           cache: "no-store",
         }),
-        fetch(`/api/admin/stats?all=true&t=${Date.now()}`, {
+        fetch(`${ADMIN_API}/stats?all=true&t=${Date.now()}`, {
           headers: { "x-admin-secret": secret },
           cache: "no-store",
         }),
@@ -106,7 +103,6 @@ export default function AdminPage() {
         }
       }
 
-      sessionStorage.setItem(SECRET_KEY, secret);
     } catch {
       setError("Could not reach the server.");
       setStats(null);
@@ -120,7 +116,7 @@ export default function AdminPage() {
     setAnalyticsLoading(true);
 
     try {
-      const res = await fetch(`/api/admin/analytics?t=${Date.now()}`, {
+      const res = await fetch(`${ADMIN_API}/analytics?t=${Date.now()}`, {
         headers: { "x-admin-secret": secret },
         cache: "no-store",
       });
@@ -144,7 +140,7 @@ export default function AdminPage() {
 
       try {
         const res = await fetch(
-          `/api/admin/purchases?side=${side}&limit=${PAGE_SIZE}&offset=${offset}&t=${Date.now()}`,
+          `${ADMIN_API}/purchases?side=${side}&limit=${PAGE_SIZE}&offset=${offset}&t=${Date.now()}`,
           {
             headers: { "x-admin-secret": secret },
             cache: "no-store",
@@ -196,7 +192,7 @@ export default function AdminPage() {
     const form = new FormData();
     form.append("image", file);
 
-    const res = await fetch(`/api/admin/master?side=${activeSide}`, {
+    const res = await fetch(`${ADMIN_API}/master?side=${activeSide}`, {
       method: "POST",
       headers: { "x-admin-secret": secret },
       body: form,
@@ -230,7 +226,7 @@ export default function AdminPage() {
     setMessage(null);
     setError(null);
 
-    const res = await fetch(`/api/admin/reset-grid?side=${activeSide}`, {
+    const res = await fetch(`${ADMIN_API}/reset-grid?side=${activeSide}`, {
       method: "POST",
       headers: { "x-admin-secret": secret },
     });

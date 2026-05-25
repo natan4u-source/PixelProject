@@ -2,7 +2,15 @@ import { createHash } from "crypto";
 
 export function getClientIp(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  if (forwarded) {
+    const parts = forwarded
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length > 0) {
+      return parts[parts.length - 1]!;
+    }
+  }
   return request.headers.get("x-real-ip") ?? "unknown";
 }
 

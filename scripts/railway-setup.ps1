@@ -115,6 +115,6 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "Done. Next steps:"
 Write-Host "  1. Open your Railway domain (Settings -> Networking if needed)"
-Write-Host "  2. Visit /admin and sign in with ADMIN_SECRET from .env.railway.setup"
+Write-Host "  2. Visit your ADMIN_PANEL_PATH URL (see .env) and sign in with ADMIN_SECRET"
 Write-Host "  3. Upload your 1000x1000 hidden image"
 Write-Host "  4. Buy a test pixel on the homepage"

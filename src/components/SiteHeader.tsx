@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteLogo } from "@/components/SiteLogo";
+import { isAdminPanelPathname } from "@/lib/admin-path";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -12,7 +13,7 @@ const NAV_LINKS = [
 export function SiteHeader() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/admin")) {
+  if (isAdminPanelPathname(pathname)) {
     return null;
   }
 

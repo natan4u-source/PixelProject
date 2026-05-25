@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAdminAuthorized } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin-guard";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { sideFromSearchParams } from "@/lib/side-params";
 import { clearAllSales } from "@/lib/store";
@@ -7,9 +7,8 @@ import { clearAllSales } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  if (!isAdminAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
 
   await ensureDualSideLayout();
 

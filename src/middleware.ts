@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  isLegacyAdminApiPath,
+  isLegacyAdminPath,
+} from "@/lib/admin-path";
 
 const BLOCKED_PATHS = [
   /^\/data(?:\/|$)/i,
@@ -9,12 +13,18 @@ const BLOCKED_PATHS = [
   /\/sold\.bitmap$/i,
   /\/pixels\.json$/i,
   /\/meta\.json$/i,
+  /\/payment-orders\.json$/i,
+  /\/visitor-events\.ndjson$/i,
 ];
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (BLOCKED_PATHS.some((pattern) => pattern.test(pathname))) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
+  if (isLegacyAdminPath(pathname) || isLegacyAdminApiPath(pathname)) {
     return new NextResponse("Not Found", { status: 404 });
   }
 

@@ -1,11 +1,24 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
+import { isProduction } from "./env";
 
 const ALGORITHM = "aes-256-gcm";
 const MAGIC = Buffer.from("PXLVLT1");
 const SALT = "pixel-project-master-v1";
 
 function getEncryptionKey() {
-  const secret = process.env.MASTER_ENCRYPTION_KEY ?? process.env.ADMIN_SECRET;
+  const masterKey = process.env.MASTER_ENCRYPTION_KEY?.trim();
+  const adminSecret = process.env.ADMIN_SECRET?.trim();
+
+  if (isProduction()) {
+    if (!masterKey) {
+      throw new Error(
+        "Set MASTER_ENCRYPTION_KEY in production (must be separate from ADMIN_SECRET).",
+      );
+    }
+    return scryptSync(masterKey, SALT, 32);
+  }
+
+  const secret = masterKey || adminSecret;
   if (!secret) {
     throw new Error(
       "Set MASTER_ENCRYPTION_KEY or ADMIN_SECRET to encrypt the hidden image.",

@@ -39,3 +39,7 @@ export function getRazorpayWebhookSecret() {
 export function isRazorpayEnabled() {
   return Boolean(getRazorpayKeyId() && getRazorpayKeySecret());
 }
+
+export function isProduction() {
+  return process.env.NODE_ENV === "production";
+}

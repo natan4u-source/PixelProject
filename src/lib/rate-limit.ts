@@ -1,13 +1,9 @@
+import { NextResponse } from "next/server";
 import { withRedis } from "./redis/client";
+import { getClientIp } from "./visitor-meta";
 
 type Bucket = { count: number; resetAt: number };
 const localBuckets = new Map<string, Bucket>();
-
-function getClientIp(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
-  return request.headers.get("x-real-ip") ?? "unknown";
-}
 
 async function consumeLocal(key: string, limit: number, windowSec: number) {
   const now = Date.now();
@@ -51,11 +47,11 @@ export async function rateLimit(
 }
 
 export function rateLimitResponse(retryAfterSec = 60) {
-  return new Response(JSON.stringify({ error: "Too many requests. Try again shortly." }), {
-    status: 429,
-    headers: {
-      "Content-Type": "application/json",
-      "Retry-After": String(retryAfterSec),
+  return NextResponse.json(
+    { error: "Too many requests. Try again shortly." },
+    {
+      status: 429,
+      headers: { "Retry-After": String(retryAfterSec) },
     },
-  });
+  );
 }

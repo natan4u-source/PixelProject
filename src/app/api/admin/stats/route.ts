@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GRID_HEIGHT, GRID_WIDTH, PRICE_PER_PIXEL_INR } from "@/lib/config";
-import { isAdminAuthorized } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin-guard";
 import { isPostgresEnabled } from "@/lib/env";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { ensureSalesMigrated } from "@/lib/migrate-sales";
@@ -36,9 +36,8 @@ async function buildAdminStats(side: CanvasSide) {
 }
 
 export async function GET(request: Request) {
-  if (!isAdminAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
 
   await ensureDualSideLayout();
 

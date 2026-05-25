@@ -21,6 +21,7 @@ import {
 } from "./sold-bitmap";
 import type { CanvasSide } from "./sides";
 import { appendSales, type PixelRecord } from "./store";
+import { withSidePurchaseLock } from "./file-lock";
 import { appendPurchase, createPurchaseLog } from "./purchases";
 
 export type PurchaseResult = {
@@ -116,22 +117,24 @@ export async function purchaseExactPixel(
     };
   }
 
-  await ensureSalesMigrated(side);
-  await repairSoldBitmapIfNeeded(side);
+  return withSidePurchaseLock(side, async () => {
+    await ensureSalesMigrated(side);
+    await repairSoldBitmapIfNeeded(side);
 
-  const bitmap = await loadSoldBitmap(side, true);
-  if (isPixelSoldInBitmap(bitmap, x, y)) {
-    throw new Error("This pixel is already sold.");
-  }
+    const bitmap = await loadSoldBitmap(side, true);
+    if (isPixelSoldInBitmap(bitmap, x, y)) {
+      throw new Error("This pixel is already sold.");
+    }
 
-  markPixelInBitmap(bitmap, x, y);
-  await saveSoldBitmap(side, bitmap);
-  await appendSales(side, [record]);
-  await incrementSoldCount(side, 1);
-  await markPixelsSold(side, [{ x, y }], await getSoldCountFast(side));
-  queueReveal(side, [record]);
+    markPixelInBitmap(bitmap, x, y);
+    await saveSoldBitmap(side, bitmap);
+    await appendSales(side, [record]);
+    await incrementSoldCount(side, 1);
+    await markPixelsSold(side, [{ x, y }], await getSoldCountFast(side));
+    queueReveal(side, [record]);
 
-  return finalizeFilePurchase(side, "single", [record], PRICE_PER_PIXEL_INR);
+    return finalizeFilePurchase(side, "single", [record], PRICE_PER_PIXEL_INR);
+  });
 }
 
 export async function purchasePixelCount(
@@ -168,32 +171,34 @@ export async function purchasePixelCount(
     };
   }
 
-  await ensureSalesMigrated(side);
-  await repairSoldBitmapIfNeeded(side);
+  return withSidePurchaseLock(side, async () => {
+    await ensureSalesMigrated(side);
+    await repairSoldBitmapIfNeeded(side);
 
-  const bitmap = await loadSoldBitmap(side, true);
-  const coords = pickRandomUnsoldPixels(bitmap, count);
+    const bitmap = await loadSoldBitmap(side, true);
+    const coords = pickRandomUnsoldPixels(bitmap, count);
 
-  if (coords.length < count) {
-    throw new Error(`Only ${coords.length} pixel(s) left to buy.`);
-  }
+    if (coords.length < count) {
+      throw new Error(`Only ${coords.length} pixel(s) left to buy.`);
+    }
 
-  const bought: PixelRecord[] = coords.map(({ x, y }) => ({
-    x,
-    y,
-    color: getPixelColorFromBuffer(image, x, y),
-    purchasedAt: new Date().toISOString(),
-  }));
+    const bought: PixelRecord[] = coords.map(({ x, y }) => ({
+      x,
+      y,
+      color: getPixelColorFromBuffer(image, x, y),
+      purchasedAt: new Date().toISOString(),
+    }));
 
-  for (const { x, y } of coords) {
-    markPixelInBitmap(bitmap, x, y);
-  }
+    for (const { x, y } of coords) {
+      markPixelInBitmap(bitmap, x, y);
+    }
 
-  await saveSoldBitmap(side, bitmap);
-  await appendSales(side, bought);
-  await incrementSoldCount(side, bought.length);
-  await markPixelsSold(side, coords, await getSoldCountFast(side));
-  queueReveal(side, bought);
+    await saveSoldBitmap(side, bitmap);
+    await appendSales(side, bought);
+    await incrementSoldCount(side, bought.length);
+    await markPixelsSold(side, coords, await getSoldCountFast(side));
+    queueReveal(side, bought);
 
-  return finalizeFilePurchase(side, "bulk", bought, count * PRICE_PER_PIXEL_INR);
+    return finalizeFilePurchase(side, "bulk", bought, count * PRICE_PER_PIXEL_INR);
+  });
 }

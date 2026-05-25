@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GRID_HEIGHT, GRID_WIDTH } from "@/lib/config";
 import { apiError } from "@/lib/api-error";
 import { blockDemoPurchaseWhenPaymentsEnabled } from "@/lib/demo-purchase-guard";
+import { blockCrossOriginMutation } from "@/lib/origin-guard";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { purchasePixelCount } from "@/lib/purchase";
 import { getSoldCountFast } from "@/lib/sales-store";
@@ -13,6 +14,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const originBlocked = blockCrossOriginMutation(request);
+    if (originBlocked) return originBlocked;
+
     const blocked = blockDemoPurchaseWhenPaymentsEnabled();
     if (blocked) return blocked;
 

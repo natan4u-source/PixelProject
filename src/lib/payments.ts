@@ -6,8 +6,10 @@ import {
 } from "./config";
 import { getRazorpayKeyId, isRazorpayEnabled } from "./env";
 import {
+  claimPaymentOrderForFulfillment,
+  completePaymentOrderFulfillment,
   getPaymentOrderByRazorpayId,
-  markPaymentOrderPaid,
+  releasePaymentOrderClaim,
   savePaymentOrder,
 } from "./payment-orders";
 import {
@@ -139,6 +141,33 @@ async function fulfillFromStoredOrder(order: {
   return purchasePixelCount(order.side, order.count);
 }
 
+async function fulfillPaymentOrder(
+  razorpayOrderId: string,
+  razorpayPaymentId: string,
+): Promise<PurchaseResult> {
+  const claim = await claimPaymentOrderForFulfillment(razorpayOrderId);
+
+  if (claim.kind === "paid") return claim.receipt;
+  if (claim.kind === "missing") throw new Error("Payment order not found.");
+  if (claim.kind === "busy") {
+    throw new Error("Payment is being processed. Try again in a few seconds.");
+  }
+
+  const order = claim.order;
+
+  try {
+    const receipt = await fulfillFromStoredOrder({
+      ...order,
+      side: order.side ?? "a",
+    });
+    await completePaymentOrderFulfillment(razorpayOrderId, razorpayPaymentId, receipt);
+    return receipt;
+  } catch (error) {
+    await releasePaymentOrderClaim(razorpayOrderId);
+    throw error;
+  }
+}
+
 export async function verifyAndFulfillPayment(params: {
   razorpayOrderId: string;
   razorpayPaymentId: string;
@@ -154,29 +183,22 @@ export async function verifyAndFulfillPayment(params: {
     throw new Error("Payment verification failed.");
   }
 
-  const existing = await getPaymentOrderByRazorpayId(razorpayOrderId);
-  if (!existing) {
-    throw new Error("Payment order not found.");
-  }
-
-  if (existing.status === "paid" && existing.receipt) {
-    return existing.receipt;
-  }
-
-  const receipt = await fulfillFromStoredOrder({ ...existing, side: existing.side ?? "a" });
-  await markPaymentOrderPaid(razorpayOrderId, razorpayPaymentId, receipt);
-  return receipt;
+  return fulfillPaymentOrder(razorpayOrderId, razorpayPaymentId);
 }
 
 export async function fulfillWebhookPayment(
   razorpayOrderId: string,
   razorpayPaymentId: string,
+  amountPaise: number,
 ): Promise<PurchaseResult | null> {
   const existing = await getPaymentOrderByRazorpayId(razorpayOrderId);
   if (!existing) return null;
+
+  if (existing.amountPaise !== amountPaise) {
+    throw new Error("Payment amount mismatch.");
+  }
+
   if (existing.status === "paid" && existing.receipt) return null;
 
-  const receipt = await fulfillFromStoredOrder({ ...existing, side: existing.side ?? "a" });
-  await markPaymentOrderPaid(razorpayOrderId, razorpayPaymentId, receipt);
-  return receipt;
+  return fulfillPaymentOrder(razorpayOrderId, razorpayPaymentId);
 }

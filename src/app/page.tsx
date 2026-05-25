@@ -553,11 +553,6 @@ export default function HomePage() {
       )}
 
       <SiteFooter />
-      <p className="pb-6 text-center text-xs text-[var(--muted)]">
-        <Link href="/admin" className="underline hover:text-white">
-          Admin panel
-        </Link>
-      </p>
     </div>
   );
 }
