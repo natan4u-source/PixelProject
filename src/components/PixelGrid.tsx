@@ -9,7 +9,6 @@ type Props = {
   revealedUrl: string | null;
   hiddenColor?: string;
   containerClassName?: string;
-  resetViewAtBottom?: boolean;
   onSelect: (x: number, y: number) => void;
   selected: { x: number; y: number } | null;
   selectedIsSold?: boolean;
@@ -22,7 +21,6 @@ export function PixelGrid({
   revealedUrl,
   hiddenColor = "#1c1c28",
   containerClassName,
-  resetViewAtBottom = false,
   onSelect,
   selected,
   selectedIsSold = false,
@@ -31,9 +29,6 @@ export function PixelGrid({
   const containerRef = useRef<HTMLDivElement>(null);
   const revealedImageRef = useRef<HTMLImageElement | null>(null);
   const transformRef = useRef({ scale: 1, offsetX: 0, offsetY: 0 });
-  const draggingRef = useRef(false);
-  const pointerDownRef = useRef({ x: 0, y: 0 });
-  const lastPointerRef = useRef({ x: 0, y: 0 });
   const [imageReady, setImageReady] = useState(false);
 
   useEffect(() => {
@@ -123,45 +118,15 @@ export function PixelGrid({
     return () => window.removeEventListener("resize", onResize);
   }, [fitToView]);
 
-  const screenToGrid = (clientX: number, clientY: number) => {
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return null;
+    if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const { scale, offsetX, offsetY } = transformRef.current;
-    const x = Math.floor((clientX - rect.left - offsetX) / scale);
-    const y = Math.floor((clientY - rect.top - offsetY) / scale);
-    if (x < 0 || y < 0 || x >= width || y >= height) return null;
-    return { x, y };
-  };
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    draggingRef.current = true;
-    pointerDownRef.current = { x: e.clientX, y: e.clientY };
-    lastPointerRef.current = pointerDownRef.current;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!draggingRef.current) return;
-    const dx = e.clientX - lastPointerRef.current.x;
-    const dy = e.clientY - lastPointerRef.current.y;
-    lastPointerRef.current = { x: e.clientX, y: e.clientY };
-    const t = transformRef.current;
-    transformRef.current = { ...t, offsetX: t.offsetX + dx, offsetY: t.offsetY + dy };
-    draw();
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!draggingRef.current) return;
-    const down = pointerDownRef.current;
-    const moved = Math.abs(e.clientX - down.x) > 4 || Math.abs(e.clientY - down.y) > 4;
-    draggingRef.current = false;
-
-    if (!moved) {
-      const cell = screenToGrid(e.clientX, e.clientY);
-      if (cell) onSelect(cell.x, cell.y);
-    }
+    const x = Math.floor((e.clientX - rect.left - offsetX) / scale);
+    const y = Math.floor((e.clientY - rect.top - offsetY) / scale);
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    onSelect(x, y);
   };
 
   return (
@@ -175,25 +140,13 @@ export function PixelGrid({
       <canvas
         ref={canvasRef}
         className="absolute inset-0 cursor-crosshair touch-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onClick={handleClick}
       />
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-1 text-xs text-[var(--muted)]">
         {soldCount > 0
-          ? `${soldCount.toLocaleString()} pixel(s) saved · drag to pan`
-          : "Drag to pan · Click a pixel to buy"}
+          ? `${soldCount.toLocaleString()} pixel(s) saved · click a pixel to buy`
+          : "Click a pixel to buy"}
       </div>
-      <button
-        type="button"
-        onClick={fitToView}
-        className={`absolute rounded-md border border-[var(--border)] bg-black/60 px-2 py-1 text-xs hover:bg-black/80 ${
-          resetViewAtBottom ? "bottom-3 right-3" : "right-3 top-3"
-        }`}
-      >
-        Reset view
-      </button>
     </div>
   );
 }
