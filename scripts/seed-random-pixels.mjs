@@ -2,9 +2,10 @@
  * Seed random sold pixels in the CENTER vertical third only (file storage).
  * Clears existing sales on each side, then places pixels only in the middle column.
  *
- * Usage: node scripts/seed-random-pixels.mjs [kamalCount] [cockroachCount]
- *   or:  node scripts/seed-random-pixels.mjs 50000        (both sides same)
- * Default: 100000 per side if no args.
+ * Usage:
+ *   node scripts/seed-random-pixels.mjs [kamalCount] [cockroachCount]  — reset + seed
+ *   node scripts/seed-random-pixels.mjs add a 30000                    — add pixels to Kamal only
+ *   node scripts/seed-random-pixels.mjs add b 5000                     — add pixels to Cockroach only
  *
  * Grid 1000×1000 split into 3 vertical strips (by column / x):
  *   left   x 0–332
@@ -144,6 +145,49 @@ function markBitmap(bitmap, x, y) {
   bitmap[index >> 3] |= 1 << (index & 7);
 }
 
+function isPixelSoldInBitmap(bitmap, x, y) {
+  const index = y * W + x;
+  return (bitmap[index >> 3] & (1 << (index & 7))) !== 0;
+}
+
+async function loadSoldBitmap(side) {
+  const bitmapPath = path.join(sideDir(side), "sold.bitmap");
+  try {
+    const buf = await fs.readFile(bitmapPath);
+    if (buf.length === BYTE_SIZE) return buf;
+  } catch {
+    // fall through
+  }
+  return Buffer.alloc(BYTE_SIZE, 0);
+}
+
+/** Unique unsold pixels in center vertical strip */
+function pickCenterBandCoordsUnsold(bitmap, count) {
+  const chosen = new Set();
+  const maxAttempts = Math.max(count * 80, 100_000);
+  let attempts = 0;
+
+  while (chosen.size < count && attempts < maxAttempts) {
+    attempts++;
+    const x = X_CENTER_START + Math.floor(Math.random() * (X_CENTER_END - X_CENTER_START + 1));
+    const y = Math.floor(Math.random() * H);
+    const key = `${x},${y}`;
+    if (chosen.has(key) || isPixelSoldInBitmap(bitmap, x, y)) continue;
+    chosen.add(key);
+  }
+
+  if (chosen.size < count) {
+    throw new Error(
+      `Only ${chosen.size.toLocaleString()} unsold pixels left in center strip (needed ${count.toLocaleString()}).`,
+    );
+  }
+
+  return Array.from(chosen).map((key) => {
+    const [xs, ys] = key.split(",");
+    return { x: parseInt(xs, 10), y: parseInt(ys, 10) };
+  });
+}
+
 async function clearSide(side) {
   const dir = sideDir(side);
   await fs.mkdir(dir, { recursive: true });
@@ -173,20 +217,27 @@ async function paintRevealed(side, records) {
   const imagePath = path.join(sideDir(side), "revealed.png");
   await fs.mkdir(sideDir(side), { recursive: true });
 
-  const created = await sharp({
-    create: {
-      width: W,
-      height: H,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    },
-  })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  let data = created.data;
-  const info = created.info;
+  let data;
+  let info;
+  try {
+    const existing = await sharp(imagePath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    data = existing.data;
+    info = existing.info;
+  } catch {
+    const created = await sharp({
+      create: {
+        width: W,
+        height: H,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    data = created.data;
+    info = created.info;
+  }
 
   const BATCH = 8000;
   for (let offset = 0; offset < records.length; offset += BATCH) {
@@ -290,16 +341,113 @@ async function seedSide(side) {
   console.log(`  done — ${count.toLocaleString()} pixels on side ${side}`);
 }
 
+async function readPixelsJson(side) {
+  try {
+    const raw = await fs.readFile(path.join(sideDir(side), "pixels.json"), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+async function addSide(side, addCount) {
+  console.log(
+    `\n=== Side ${side.toUpperCase()} → add ${addCount.toLocaleString()} random pixels (center strip x ${X_CENTER_START}–${X_CENTER_END}) ===`,
+  );
+
+  const bitmap = await loadSoldBitmap(side);
+  let current = 0;
+  try {
+    current = parseInt(await fs.readFile(path.join(sideDir(side), "sold.count"), "utf8"), 10);
+    if (!Number.isFinite(current) || current < 0) current = 0;
+  } catch {
+    current = 0;
+  }
+
+  const master = await loadMasterPixels(side);
+  const coords = pickCenterBandCoordsUnsold(bitmap, addCount);
+  const purchasedAt = new Date().toISOString();
+  const records = coords.map(({ x, y }) => ({
+    x,
+    y,
+    color: master ? colorAt(master, x, y) : randomColor(),
+    purchasedAt,
+  }));
+
+  for (const { x, y } of records) {
+    markBitmap(bitmap, x, y);
+  }
+
+  const newTotal = current + records.length;
+  await fs.writeFile(path.join(sideDir(side), "sold.bitmap"), bitmap);
+  await fs.writeFile(path.join(sideDir(side), "sold.count"), String(newTotal));
+
+  const salesPath = path.join(sideDir(side), "sales.ndjson");
+  const CHUNK = 5000;
+  for (let i = 0; i < records.length; i += CHUNK) {
+    const chunk = records.slice(i, i + CHUNK);
+    const lines = chunk.map((r) => JSON.stringify(r)).join("\n") + "\n";
+    await fs.appendFile(salesPath, lines, "utf8");
+  }
+
+  const pixels = await readPixelsJson(side);
+  for (const r of records) {
+    pixels[`${r.x},${r.y}`] = r;
+  }
+  const pixelsJson = JSON.stringify(pixels);
+  await fs.writeFile(path.join(sideDir(side), "pixels.json"), pixelsJson, "utf8");
+  await fs.writeFile(path.join(sideDir(side), "pixels.backup.json"), pixelsJson, "utf8");
+
+  const purchase = {
+    id: randomUUID(),
+    type: "bulk",
+    purchasedAt,
+    pixelCount: records.length,
+    totalInr: records.length * 100,
+    region: "center-vertical-third",
+    xRange: [X_CENTER_START, X_CENTER_END],
+    note: "Added pixels to center strip",
+    pixels: records.slice(0, 50).map(({ x, y, color }) => ({ x, y, color })),
+  };
+  await fs.appendFile(
+    path.join(sideDir(side), "purchases.ndjson"),
+    JSON.stringify(purchase) + "\n",
+    "utf8",
+  );
+
+  console.log("  updating revealed.png …");
+  await paintRevealed(side, records);
+  console.log(
+    `  done — ${records.length.toLocaleString()} added, total now ${newTotal.toLocaleString()} on side ${side}`,
+  );
+}
+
 loadEnvFile();
 await fs.mkdir(DATA, { recursive: true });
 
-console.log(
-  `Clearing old sales, then seeding center vertical strip (x ${X_CENTER_START}–${X_CENTER_END}): Kamal=${COUNTS.a.toLocaleString()}, Cockroach=${COUNTS.b.toLocaleString()}…`,
-);
+const mode = process.argv[2];
+if (mode === "add") {
+  const side = (process.argv[3] ?? "a").toLowerCase();
+  const addCount = parseInt(process.argv[4] ?? "", 10);
+  if (side !== "a" && side !== "b") {
+    console.error("Side must be a (Kamal) or b (Cockroach).");
+    process.exit(1);
+  }
+  if (!Number.isFinite(addCount) || addCount < 1) {
+    console.error("Provide a positive pixel count to add.");
+    process.exit(1);
+  }
+  await addSide(side, Math.min(addCount, CENTER_PIXELS));
+  console.log("\nDone. Refresh the site to see new pixels.");
+} else {
+  console.log(
+    `Clearing old sales, then seeding center vertical strip (x ${X_CENTER_START}–${X_CENTER_END}): Kamal=${COUNTS.a.toLocaleString()}, Cockroach=${COUNTS.b.toLocaleString()}…`,
+  );
 
-for (const side of SIDES) {
-  await seedSide(side);
+  for (const side of SIDES) {
+    await seedSide(side);
+  }
+
+  console.log("\nDone. Left and right thirds are empty; center vertical strip has random sold pixels.");
+  console.log("Restart dev server / redeploy and refresh the site.");
 }
-
-console.log("\nDone. Left and right thirds are empty; center vertical strip has random sold pixels.");
-console.log("Restart dev server / redeploy and refresh the site.");
