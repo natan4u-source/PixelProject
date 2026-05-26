@@ -5,6 +5,7 @@ import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { sideFromBody } from "@/lib/side-params";
 import { masterImageExists } from "@/lib/store";
+import { blockWhenVotingClosed } from "@/lib/voting-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ export async function POST(request: Request) {
   try {
     const limit = await rateLimit(request, "payment-create", 20, 60);
     if (!limit.allowed) return rateLimitResponse(60);
+
+    const votingBlocked = blockWhenVotingClosed();
+    if (votingBlocked) return votingBlocked;
 
     await ensureDualSideLayout();
 

@@ -21,6 +21,7 @@ import { masterImageExists, readMeta } from "@/lib/store";
 import { revealedImageExists } from "@/lib/revealed-image";
 import type { CanvasSide } from "@/lib/sides";
 import { sideFromSearchParams } from "@/lib/side-params";
+import { VOTING_END_ISO, isVotingOpen } from "@/lib/voting";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,8 @@ export async function GET(request: Request) {
       paymentProvider: getActivePaymentProvider(),
       cashfreeEnv: getCashfreeEnv(),
       razorpayKeyId: getRazorpayKeyId(),
+      votingOpen: isVotingOpen(),
+      votingEndsAt: VOTING_END_ISO,
     });
 
     await setCachedStatus(side, body);

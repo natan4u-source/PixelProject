@@ -8,6 +8,7 @@ import { purchaseExactPixel } from "@/lib/purchase";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { sideFromBody } from "@/lib/side-params";
 import { masterImageExists } from "@/lib/store";
+import { blockWhenVotingClosed } from "@/lib/voting-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,9 @@ export async function POST(request: Request) {
 
     const blocked = blockDemoPurchaseWhenPaymentsEnabled();
     if (blocked) return blocked;
+
+    const votingBlocked = blockWhenVotingClosed();
+    if (votingBlocked) return votingBlocked;
 
     const limit = await rateLimit(request, "buy", 30, 60);
     if (!limit.allowed) return rateLimitResponse(60);

@@ -10,6 +10,7 @@ type Props = {
   ready: boolean;
   loading: boolean;
   paymentsEnabled?: boolean;
+  votingOpen?: boolean;
   onClose: () => void;
   onConfirm: (count: number) => void;
 };
@@ -21,6 +22,7 @@ export function BulkBuyModal({
   ready,
   loading,
   paymentsEnabled = false,
+  votingOpen = true,
   onClose,
   onConfirm,
 }: Props) {
@@ -117,15 +119,17 @@ export function BulkBuyModal({
           </button>
           <button
             type="button"
-            disabled={!ready || !valid || loading}
+            disabled={!votingOpen || !ready || !valid || loading}
             onClick={() => onConfirm(count)}
             className="flex-1 rounded-lg bg-[var(--accent)] py-2.5 text-sm font-semibold text-black disabled:opacity-50"
           >
             {loading
               ? "Processing…"
-              : paymentsEnabled
-                ? `Pay ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`
-                : `Buy (demo) ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`}
+              : !votingOpen
+                ? "Voting ended"
+                : paymentsEnabled
+                  ? `Pay ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`
+                  : `Buy (demo) ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`}
           </button>
         </div>
       </div>

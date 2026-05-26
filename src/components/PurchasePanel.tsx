@@ -13,6 +13,7 @@ type Props = {
   ready: boolean;
   loading: boolean;
   paymentsEnabled?: boolean;
+  votingOpen?: boolean;
   onBuy: () => void;
   onClear: () => void;
 };
@@ -27,6 +28,7 @@ export function PurchasePanel({
   ready,
   loading,
   paymentsEnabled = false,
+  votingOpen = true,
   onBuy,
   onClear,
 }: Props) {
@@ -69,7 +71,7 @@ export function PurchasePanel({
           {paymentsEnabled && <TaxDisclaimer className="mt-2" />}
           <button
             type="button"
-            disabled={loading}
+            disabled={loading || !votingOpen}
             onClick={onBuy}
             className={`mt-4 w-full rounded-lg px-4 py-3 font-bold uppercase tracking-wide transition disabled:opacity-50 ${
               isKamal
@@ -79,9 +81,11 @@ export function PurchasePanel({
           >
             {loading
               ? "Processing…"
-              : paymentsEnabled
-                ? `Pay ${priceLabel}`
-                : `Buy (demo) ${priceLabel}`}
+              : !votingOpen
+                ? "Voting ended"
+                : paymentsEnabled
+                  ? `Pay ${priceLabel}`
+                  : `Buy (demo) ${priceLabel}`}
           </button>
         </>
       )}

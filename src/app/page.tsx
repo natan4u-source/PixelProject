@@ -14,6 +14,7 @@ import { openCashfreeCheckout } from "@/lib/cashfree-client";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
 import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
+import { getVotingClosedMessage, isVotingOpen } from "@/lib/voting";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -68,6 +69,7 @@ export default function HomePage() {
   const [receipt, setReceipt] = useState<PurchaseReceiptData | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [votingOpen, setVotingOpen] = useState(true);
 
   const load = useCallback(async () => {
     try {
@@ -88,6 +90,13 @@ export default function HomePage() {
     const id = setInterval(load, 30_000);
     return () => clearInterval(id);
   }, [load]);
+
+  useEffect(() => {
+    const tick = () => setVotingOpen(isVotingOpen());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -241,6 +250,10 @@ export default function HomePage() {
   };
 
   const handleBuy = async () => {
+    if (!votingOpen) {
+      setMessage(getVotingClosedMessage());
+      return;
+    }
     if (!selected || !selectedStatus?.ready) return;
     if (selectedStatus.remaining <= 0) {
       setMessage(`All pixels are sold out on ${SIDE_INFO[selected.side].label}.`);
@@ -277,6 +290,11 @@ export default function HomePage() {
   };
 
   const handleBulkBuy = async (side: CanvasSide, count: number) => {
+    if (!votingOpen) {
+      setMessage(getVotingClosedMessage());
+      setBulkOpenForSide(null);
+      return;
+    }
     const sideStatus = sides?.[side];
     if (!sideStatus?.ready) return;
     if (sideStatus.remaining <= 0) {
@@ -350,7 +368,12 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setBulkOpenForSide(side)}
-              disabled={!status?.ready || loadingSide !== null || (status?.remaining ?? 0) <= 0}
+              disabled={
+                !votingOpen ||
+                !status?.ready ||
+                loadingSide !== null ||
+                (status?.remaining ?? 0) <= 0
+              }
               className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition disabled:opacity-50 ${
                 isKamal
                   ? "war-btn-kamal"
@@ -490,6 +513,15 @@ export default function HomePage() {
         <BattleAmbient />
 
         <div className="relative z-[1] mx-auto max-w-[1800px] px-3 sm:px-4">
+          {!votingOpen && (
+            <div
+              className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-center text-sm font-semibold text-red-200"
+              role="alert"
+            >
+              {getVotingClosedMessage()}
+            </div>
+          )}
+
           {/* Battle is live — top strip */}
           <div
             id="battle"
@@ -568,6 +600,7 @@ export default function HomePage() {
                 ready={selectedStatus.ready}
                 loading={loadingSide === selected.side}
                 paymentsEnabled={paymentsEnabled}
+                votingOpen={votingOpen}
                 onBuy={handleBuy}
                 onClear={() => {
                   setSelected(null);
@@ -619,6 +652,7 @@ export default function HomePage() {
           ready={bulkStatus.ready}
           loading={loadingSide === bulkSide}
           paymentsEnabled={paymentsEnabled}
+          votingOpen={votingOpen}
           onClose={() => setBulkOpenForSide(null)}
           onConfirm={(count) => handleBulkBuy(bulkSide, count)}
         />
