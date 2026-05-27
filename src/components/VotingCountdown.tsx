@@ -65,12 +65,12 @@ export function VotingCountdown({ onOpenChange, className = "" }: Props) {
     >
       <div className="voting-countdown-inner">
         <p className="voting-countdown-label">
-          {closed ? "Voting has ended" : "Voting ends in"}
+          {closed ? "Competition has ended" : "Competition ends in"}
         </p>
 
         {closed ? (
           <p className="voting-countdown-ended-msg">
-            Pixel purchases are closed. The canvas stays live — the battle is frozen.
+            The pixel war is over — no more pixels can be bought. The canvas stays live forever.
           </p>
         ) : (
           <div className="voting-countdown-digits" role="timer">

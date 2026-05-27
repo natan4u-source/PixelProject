@@ -126,7 +126,7 @@ export function BulkBuyModal({
             {loading
               ? "Processing…"
               : !votingOpen
-                ? "Voting ended"
+                ? "Competition ended"
                 : paymentsEnabled
                   ? `Pay ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`
                   : `Buy (demo) ₹${valid ? totalInr.toLocaleString("en-IN") : "—"}`}

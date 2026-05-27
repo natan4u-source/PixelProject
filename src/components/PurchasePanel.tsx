@@ -82,7 +82,7 @@ export function PurchasePanel({
             {loading
               ? "Processing…"
               : !votingOpen
-                ? "Voting ended"
+                ? "Competition ended"
                 : paymentsEnabled
                   ? `Pay ${priceLabel}`
                   : `Buy (demo) ${priceLabel}`}

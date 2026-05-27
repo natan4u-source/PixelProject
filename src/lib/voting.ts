@@ -16,7 +16,7 @@ export function getVotingClosedMessage(): string {
     timeStyle: "short",
     timeZone: "Asia/Kolkata",
   });
-  return `Voting ended on ${end} (IST). No more pixels can be purchased.`;
+  return `The competition ended on ${end} (IST). No more pixels can be purchased.`;
 }
 
 export function votingClosedResponse() {
