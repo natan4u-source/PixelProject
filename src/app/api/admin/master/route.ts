@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { saveMasterImage } from "@/lib/image";
+import { rebuildAllRevealedFromMaster } from "@/lib/rebuild-revealed";
+import { getSoldCountFast } from "@/lib/sales-store";
 import { isLikelyPng, MAX_MASTER_UPLOAD_BYTES } from "@/lib/upload-limits";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { sideFromSearchParams } from "@/lib/side-params";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const denied = await requireAdmin(request);
@@ -42,9 +47,26 @@ export async function POST(request: Request) {
 
   await saveMasterImage(side, buffer);
 
+  let pixelsRepainted = 0;
+  try {
+    const sold = await getSoldCountFast(side);
+    if (sold > 0) {
+      pixelsRepainted = await rebuildAllRevealedFromMaster(side);
+    }
+  } catch (error) {
+    console.error("rebuild after master upload failed:", error);
+    return NextResponse.json({
+      ok: true,
+      side,
+      warning: "Master saved but rebuilding revealed pixels failed. Use rebuild-revealed admin API.",
+      message: `Hidden image uploaded for Side ${side.toUpperCase()}.`,
+    });
+  }
+
   return NextResponse.json({
     ok: true,
     side,
+    pixelsRepainted,
     message: `Hidden image uploaded for Side ${side.toUpperCase()}.`,
   });
 }
