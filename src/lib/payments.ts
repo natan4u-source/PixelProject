@@ -11,19 +11,14 @@ import {
   getCashfreeCheckoutMode,
   getSuccessfulCashfreePayment,
   inrToCashfreeAmount,
+  inrToPaise,
   paiseToInr,
 } from "./cashfree";
-import {
-  getActivePaymentProvider,
-  getRazorpayKeyId,
-  isCashfreeEnabled,
-  isPaymentsEnabled,
-  type PaymentProvider,
-} from "./env";
+import { assertCashfreeConfigured, isCashfreeEnabled, isPaymentsEnabled } from "./env";
 import {
   claimPaymentOrderForFulfillment,
   completePaymentOrderFulfillment,
-  getPaymentOrderByRazorpayId,
+  getPaymentOrderByGatewayId,
   releasePaymentOrderClaim,
   savePaymentOrder,
 } from "./payment-orders";
@@ -32,7 +27,6 @@ import {
   purchasePixelCount,
   type PurchaseResult,
 } from "./purchase";
-import { getRazorpayClient, inrToPaise, verifyPaymentSignature } from "./razorpay";
 import { getSoldCountFast, isPixelSoldFast } from "./sales-store";
 import type { CanvasSide } from "./sides";
 
@@ -40,33 +34,21 @@ export type CreateOrderInput =
   | { side: CanvasSide; type: "single"; x: number; y: number }
   | { side: CanvasSide; type: "bulk"; count: number };
 
-export type CreateOrderResponse =
-  | {
-      provider: "cashfree";
-      orderId: string;
-      paymentSessionId: string;
-      cashfreeMode: "sandbox" | "production";
-      amountInr: number;
-      currency: "INR";
-      side: CanvasSide;
-    }
-  | {
-      provider: "razorpay";
-      orderId: string;
-      amount: number;
-      currency: string;
-      keyId: string;
-      side: CanvasSide;
-    };
+export type CreateOrderResponse = {
+  provider: "cashfree";
+  orderId: string;
+  paymentSessionId: string;
+  cashfreeMode: "sandbox" | "production";
+  amountInr: number;
+  currency: "INR";
+  side: CanvasSide;
+};
 
 export function assertPaymentsConfigured() {
   if (!isPaymentsEnabled()) {
     throw new Error("Online payments are not configured yet.");
   }
-}
-
-export function getPaymentProvider(): PaymentProvider | null {
-  return getActivePaymentProvider();
+  assertCashfreeConfigured();
 }
 
 export async function validateSinglePurchase(side: CanvasSide, x: number, y: number) {
@@ -111,11 +93,18 @@ function amountForOrder(input: CreateOrderInput) {
   return inrToPaise(input.count * PRICE_PER_PIXEL_INR);
 }
 
-async function createCashfreePaymentOrder(
-  input: CreateOrderInput,
-  amountPaise: number,
-  internalId: string,
-): Promise<CreateOrderResponse> {
+export async function createPaymentOrder(input: CreateOrderInput): Promise<CreateOrderResponse> {
+  assertPaymentsConfigured();
+
+  if (input.type === "single") {
+    await validateSinglePurchase(input.side, input.x, input.y);
+  } else {
+    await validateBulkPurchase(input.side, input.count);
+  }
+
+  const amountPaise = amountForOrder(input);
+  const internalId = randomUUID();
+
   const cf = await createCashfreeOrder({
     orderId: internalId,
     amountPaise,
@@ -127,7 +116,7 @@ async function createCashfreePaymentOrder(
   await savePaymentOrder({
     id: internalId,
     side: input.side,
-    razorpayOrderId: internalId,
+    gatewayOrderId: internalId,
     type: input.type,
     x: input.type === "single" ? input.x : undefined,
     y: input.type === "single" ? input.y : undefined,
@@ -144,67 +133,6 @@ async function createCashfreePaymentOrder(
     currency: "INR",
     side: input.side,
   };
-}
-
-async function createRazorpayPaymentOrder(
-  input: CreateOrderInput,
-  amountPaise: number,
-  internalId: string,
-): Promise<CreateOrderResponse> {
-  const razorpay = getRazorpayClient();
-
-  const order = await razorpay.orders.create({
-    amount: amountPaise,
-    currency: "INR",
-    receipt: internalId.slice(0, 40),
-    notes: {
-      side: input.side,
-      type: input.type,
-      ...(input.type === "single"
-        ? { x: String(input.x), y: String(input.y) }
-        : { count: String(input.count) }),
-    },
-  });
-
-  await savePaymentOrder({
-    id: internalId,
-    side: input.side,
-    razorpayOrderId: order.id,
-    type: input.type,
-    x: input.type === "single" ? input.x : undefined,
-    y: input.type === "single" ? input.y : undefined,
-    count: input.type === "bulk" ? input.count : undefined,
-    amountPaise,
-  });
-
-  return {
-    provider: "razorpay",
-    orderId: order.id,
-    amount: amountPaise,
-    currency: order.currency,
-    keyId: getRazorpayKeyId()!,
-    side: input.side,
-  };
-}
-
-export async function createPaymentOrder(input: CreateOrderInput): Promise<CreateOrderResponse> {
-  assertPaymentsConfigured();
-
-  if (input.type === "single") {
-    await validateSinglePurchase(input.side, input.x, input.y);
-  } else {
-    await validateBulkPurchase(input.side, input.count);
-  }
-
-  const amountPaise = amountForOrder(input);
-  const internalId = randomUUID();
-  const provider = getActivePaymentProvider();
-
-  if (provider === "cashfree") {
-    return createCashfreePaymentOrder(input, amountPaise, internalId);
-  }
-
-  return createRazorpayPaymentOrder(input, amountPaise, internalId);
 }
 
 async function fulfillFromStoredOrder(order: {
@@ -261,7 +189,7 @@ export async function verifyAndFulfillCashfreePayment(orderId: string): Promise<
     throw new Error("Cashfree is not configured.");
   }
 
-  const stored = await getPaymentOrderByRazorpayId(orderId);
+  const stored = await getPaymentOrderByGatewayId(orderId);
   if (!stored) {
     throw new Error("Payment order not found.");
   }
@@ -279,28 +207,12 @@ export async function verifyAndFulfillCashfreePayment(orderId: string): Promise<
   return fulfillPaymentOrder(orderId, payment.paymentId);
 }
 
-export async function verifyAndFulfillPayment(params: {
-  razorpayOrderId: string;
-  razorpayPaymentId: string;
-  razorpaySignature: string;
-}): Promise<PurchaseResult> {
-  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = params;
-
-  if (
-    !verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature)
-  ) {
-    throw new Error("Payment verification failed.");
-  }
-
-  return fulfillPaymentOrder(razorpayOrderId, razorpayPaymentId);
-}
-
 export async function fulfillWebhookPayment(
   gatewayOrderId: string,
   gatewayPaymentId: string,
   amountPaise: number,
 ): Promise<PurchaseResult | null> {
-  const existing = await getPaymentOrderByRazorpayId(gatewayOrderId);
+  const existing = await getPaymentOrderByGatewayId(gatewayOrderId);
   if (!existing) return null;
 
   if (existing.amountPaise !== amountPaise) {
@@ -319,9 +231,4 @@ export async function fulfillCashfreeWebhookPayment(
 ): Promise<PurchaseResult | null> {
   const amountPaise = Math.round(amountInr * 100);
   return fulfillWebhookPayment(orderId, paymentId, amountPaise);
-}
-
-/** @deprecated Use assertPaymentsConfigured */
-export function assertRazorpayConfigured() {
-  assertPaymentsConfigured();
 }

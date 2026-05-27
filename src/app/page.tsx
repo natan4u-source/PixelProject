@@ -11,7 +11,6 @@ import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer"
 import { HomeBusinessStrip } from "@/components/HomeBusinessStrip";
 import { SiteFooter } from "@/components/SiteFooter";
 import { openCashfreeCheckout } from "@/lib/cashfree-client";
-import { openRazorpayCheckout } from "@/lib/razorpay-client";
 import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
 import { getVotingClosedMessage, isVotingOpen } from "@/lib/voting";
@@ -199,7 +198,6 @@ export default function HomePage() {
   const payOnline = async (
     side: CanvasSide,
     payload: { type: "single"; x: number; y: number } | { type: "bulk"; count: number },
-    description: string,
   ) => {
     const orderRes = await fetch("/api/payments/create-order", {
       method: "POST",
@@ -209,43 +207,19 @@ export default function HomePage() {
     const orderData = await orderRes.json();
     if (!orderRes.ok) throw new Error(orderData.error ?? "Could not start payment.");
 
-    if (orderData.provider === "cashfree") {
-      await openCashfreeCheckout(orderData.paymentSessionId, orderData.cashfreeMode);
-
-      const verifyRes = await fetch("/api/payments/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: "cashfree",
-          order_id: orderData.orderId,
-        }),
-      });
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok) throw new Error(verifyData.error ?? "Payment verification failed.");
-      return verifyData.receipt as PurchaseReceiptData;
+    if (orderData.provider !== "cashfree") {
+      throw new Error("Online payments are not configured yet.");
     }
 
-    const payment = await openRazorpayCheckout({
-      keyId: orderData.keyId,
-      orderId: orderData.orderId,
-      amount: orderData.amount,
-      currency: orderData.currency,
-      description,
-    });
+    await openCashfreeCheckout(orderData.paymentSessionId, orderData.cashfreeMode);
 
     const verifyRes = await fetch("/api/payments/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider: "razorpay",
-        razorpay_order_id: payment.razorpay_order_id,
-        razorpay_payment_id: payment.razorpay_payment_id,
-        razorpay_signature: payment.razorpay_signature,
-      }),
+      body: JSON.stringify({ order_id: orderData.orderId }),
     });
     const verifyData = await verifyRes.json();
     if (!verifyRes.ok) throw new Error(verifyData.error ?? "Payment verification failed.");
-
     return verifyData.receipt as PurchaseReceiptData;
   };
 
@@ -266,11 +240,7 @@ export default function HomePage() {
 
     try {
       if (paymentsEnabled) {
-        const receiptData = await payOnline(
-          side,
-          { type: "single", x, y },
-          `${SIDE_INFO[side].label} pixel (${x}, ${y})`,
-        );
+        const receiptData = await payOnline(side, { type: "single", x, y });
         await finishPurchase(side, receiptData, { x, y });
       } else {
         const res = await fetch("/api/pixels/buy", {
@@ -308,11 +278,7 @@ export default function HomePage() {
 
     try {
       if (paymentsEnabled) {
-        const receiptData = await payOnline(
-          side,
-          { type: "bulk", count },
-          `${count.toLocaleString("en-IN")} pixels on ${SIDE_INFO[side].label}`,
-        );
+        const receiptData = await payOnline(side, { type: "bulk", count });
         setBulkOpenForSide(null);
         await finishPurchase(side, receiptData);
       } else {

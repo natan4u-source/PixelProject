@@ -1,4 +1,4 @@
-export type PaymentProvider = "cashfree" | "razorpay";
+export type PaymentProvider = "cashfree";
 
 export function getDatabaseUrl() {
   return process.env.DATABASE_URL?.trim() || null;
@@ -26,22 +26,6 @@ export function getRevealedCacheMaxAgeSec() {
   return Number.isFinite(raw) && raw >= 0 ? raw : 60;
 }
 
-export function getRazorpayKeyId() {
-  return process.env.RAZORPAY_KEY_ID?.trim() || null;
-}
-
-export function getRazorpayKeySecret() {
-  return process.env.RAZORPAY_KEY_SECRET?.trim() || null;
-}
-
-export function getRazorpayWebhookSecret() {
-  return process.env.RAZORPAY_WEBHOOK_SECRET?.trim() || null;
-}
-
-export function isRazorpayEnabled() {
-  return Boolean(getRazorpayKeyId() && getRazorpayKeySecret());
-}
-
 export function getCashfreeAppId() {
   return process.env.CASHFREE_APP_ID?.trim() || null;
 }
@@ -65,14 +49,19 @@ export function isCashfreeEnabled() {
   return Boolean(getCashfreeAppId() && getCashfreeSecret());
 }
 
+export function assertCashfreeConfigured() {
+  if (!isCashfreeEnabled()) {
+    throw new Error("Cashfree is not configured.");
+  }
+}
+
 export function getActivePaymentProvider(): PaymentProvider | null {
   if (isCashfreeEnabled()) return "cashfree";
-  if (isRazorpayEnabled()) return "razorpay";
   return null;
 }
 
 export function isPaymentsEnabled() {
-  return getActivePaymentProvider() !== null;
+  return isCashfreeEnabled();
 }
 
 export function isProduction() {

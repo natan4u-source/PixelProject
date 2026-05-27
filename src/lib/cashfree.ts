@@ -47,6 +47,10 @@ export function paiseToInr(amountPaise: number) {
   return Math.round(amountPaise) / 100;
 }
 
+export function inrToPaise(amountInr: number) {
+  return Math.round(amountInr * 100);
+}
+
 export function inrToCashfreeAmount(amountPaise: number) {
   return paiseToInr(amountPaise);
 }

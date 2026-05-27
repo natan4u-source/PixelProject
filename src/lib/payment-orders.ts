@@ -10,7 +10,7 @@ export type PaymentOrderStatus = "created" | "fulfilling" | "paid" | "failed";
 export type PaymentOrderRecord = {
   id: string;
   side?: CanvasSide;
-  razorpayOrderId: string;
+  gatewayOrderId: string;
   type: "single" | "bulk";
   x?: number;
   y?: number;
@@ -18,12 +18,17 @@ export type PaymentOrderRecord = {
   amountPaise: number;
   status: PaymentOrderStatus;
   createdAt: string;
-  razorpayPaymentId?: string;
+  gatewayPaymentId?: string;
   purchaseId?: string;
   receipt?: PurchaseResult;
 };
 
 type PaymentOrderStore = Record<string, PaymentOrderRecord>;
+
+type StoredPaymentOrder = PaymentOrderRecord & {
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+};
 
 export type PaymentClaimResult =
   | { kind: "paid"; receipt: PurchaseResult }
@@ -31,10 +36,35 @@ export type PaymentClaimResult =
   | { kind: "busy" }
   | { kind: "missing" };
 
+function normalizeRecord(raw: StoredPaymentOrder): PaymentOrderRecord {
+  const gatewayOrderId = raw.gatewayOrderId ?? raw.razorpayOrderId ?? "";
+  return {
+    id: raw.id,
+    side: raw.side,
+    gatewayOrderId,
+    type: raw.type,
+    x: raw.x,
+    y: raw.y,
+    count: raw.count,
+    amountPaise: raw.amountPaise,
+    status: raw.status,
+    createdAt: raw.createdAt,
+    gatewayPaymentId: raw.gatewayPaymentId ?? raw.razorpayPaymentId,
+    purchaseId: raw.purchaseId,
+    receipt: raw.receipt,
+  };
+}
+
 async function readStore(): Promise<PaymentOrderStore> {
   try {
     const raw = await fs.readFile(PAYMENT_ORDERS_PATH, "utf8");
-    return JSON.parse(raw) as PaymentOrderStore;
+    const parsed = JSON.parse(raw) as Record<string, StoredPaymentOrder>;
+    const store: PaymentOrderStore = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      const record = normalizeRecord(value);
+      store[record.gatewayOrderId || key] = record;
+    }
+    return store;
   } catch {
     return {};
   }
@@ -61,7 +91,7 @@ export async function savePaymentOrder(
     const record: PaymentOrderRecord = {
       id: input.id ?? randomUUID(),
       side: input.side,
-      razorpayOrderId: input.razorpayOrderId,
+      gatewayOrderId: input.gatewayOrderId,
       type: input.type,
       x: input.x,
       y: input.y,
@@ -69,28 +99,28 @@ export async function savePaymentOrder(
       amountPaise: input.amountPaise,
       status: input.status ?? "created",
       createdAt: input.createdAt ?? new Date().toISOString(),
-      razorpayPaymentId: input.razorpayPaymentId,
+      gatewayPaymentId: input.gatewayPaymentId,
       purchaseId: input.purchaseId,
     };
-    store[record.razorpayOrderId] = record;
+    store[record.gatewayOrderId] = record;
     await writeStore(store);
     return record;
   });
 }
 
-export async function getPaymentOrderByRazorpayId(
-  razorpayOrderId: string,
+export async function getPaymentOrderByGatewayId(
+  gatewayOrderId: string,
 ): Promise<PaymentOrderRecord | null> {
   const store = await readStore();
-  return store[razorpayOrderId] ?? null;
+  return store[gatewayOrderId] ?? null;
 }
 
 export async function claimPaymentOrderForFulfillment(
-  razorpayOrderId: string,
+  gatewayOrderId: string,
 ): Promise<PaymentClaimResult> {
   return withPaymentStoreLock(async () => {
     const store = await readStore();
-    const existing = store[razorpayOrderId];
+    const existing = store[gatewayOrderId];
     if (!existing) return { kind: "missing" };
 
     if (existing.status === "paid" && existing.receipt) {
@@ -101,51 +131,42 @@ export async function claimPaymentOrderForFulfillment(
       return { kind: "busy" };
     }
 
-    store[razorpayOrderId] = { ...existing, status: "fulfilling" };
+    store[gatewayOrderId] = { ...existing, status: "fulfilling" };
     await writeStore(store);
-    return { kind: "claim", order: store[razorpayOrderId]! };
+    return { kind: "claim", order: store[gatewayOrderId]! };
   });
 }
 
 export async function completePaymentOrderFulfillment(
-  razorpayOrderId: string,
-  razorpayPaymentId: string,
+  gatewayOrderId: string,
+  gatewayPaymentId: string,
   receipt: PurchaseResult,
 ): Promise<PaymentOrderRecord | null> {
   return withPaymentStoreLock(async () => {
     const store = await readStore();
-    const existing = store[razorpayOrderId];
+    const existing = store[gatewayOrderId];
     if (!existing) return null;
 
     const updated: PaymentOrderRecord = {
       ...existing,
       status: "paid",
-      razorpayPaymentId,
+      gatewayPaymentId,
       purchaseId: receipt.id,
       receipt,
     };
-    store[razorpayOrderId] = updated;
+    store[gatewayOrderId] = updated;
     await writeStore(store);
     return updated;
   });
 }
 
-export async function releasePaymentOrderClaim(razorpayOrderId: string) {
+export async function releasePaymentOrderClaim(gatewayOrderId: string) {
   return withPaymentStoreLock(async () => {
     const store = await readStore();
-    const existing = store[razorpayOrderId];
+    const existing = store[gatewayOrderId];
     if (!existing || existing.status !== "fulfilling") return;
 
-    store[razorpayOrderId] = { ...existing, status: "created" };
+    store[gatewayOrderId] = { ...existing, status: "created" };
     await writeStore(store);
   });
-}
-
-/** @deprecated Use completePaymentOrderFulfillment */
-export async function markPaymentOrderPaid(
-  razorpayOrderId: string,
-  razorpayPaymentId: string,
-  receipt: PurchaseResult,
-): Promise<PaymentOrderRecord | null> {
-  return completePaymentOrderFulfillment(razorpayOrderId, razorpayPaymentId, receipt);
 }

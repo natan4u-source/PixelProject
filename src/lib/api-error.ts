@@ -6,7 +6,6 @@ const CLIENT_SAFE = new Set([
   "Payment verification failed.",
   "Payment order not found.",
   "Online payments are not configured yet.",
-  "Razorpay is not configured.",
   "Cashfree is not configured.",
   "Payment not completed yet. Please wait and try again.",
   "Could not create Cashfree order.",

@@ -8,7 +8,6 @@ import {
 import {
   getActivePaymentProvider,
   getCashfreeEnv,
-  getRazorpayKeyId,
   getStatusCacheTtlSec,
   isPaymentsEnabled,
   isPostgresEnabled,
@@ -68,7 +67,6 @@ export async function GET(request: Request) {
         paymentsEnabled: isPaymentsEnabled(),
         paymentProvider: getActivePaymentProvider(),
         cashfreeEnv: getCashfreeEnv(),
-        razorpayKeyId: getRazorpayKeyId(),
       });
 
       return new NextResponse(body, {
@@ -97,7 +95,6 @@ export async function GET(request: Request) {
       paymentsEnabled: isPaymentsEnabled(),
       paymentProvider: getActivePaymentProvider(),
       cashfreeEnv: getCashfreeEnv(),
-      razorpayKeyId: getRazorpayKeyId(),
       votingOpen: isVotingOpen(),
       votingEndsAt: VOTING_END_ISO,
     });
