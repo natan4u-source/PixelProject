@@ -32,7 +32,7 @@ export default function ContactPage() {
               <LegalBusinessDetails />
             </div>
             <p className="mt-4 text-xs text-white/45">
-              Please include your Razorpay payment id or order id for purchase-related emails.
+              Please include your Cashfree payment id or order id for purchase-related emails.
             </p>
           </section>
 

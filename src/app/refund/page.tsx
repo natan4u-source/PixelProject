@@ -58,7 +58,7 @@ export default function RefundPage() {
           <p>
             Please review your selection, canvas (A or B), quantity, and price (₹
             {PRICE_PER_PIXEL_INR.toLocaleString("en-IN")} per pixel) before
-            confirming payment on Razorpay. If you do not agree to this no-refund policy, do not complete
+            confirming payment on Cashfree. If you do not agree to this no-refund policy, do not complete
             the purchase.
           </p>
         </LegalSection>

@@ -38,7 +38,7 @@ export default function ShippingPage() {
           <LegalList
             items={[
               `Delivery time: ${DIGITAL_DELIVERY_TIME}.`,
-              "After Razorpay confirms payment, pixels are allocated and revealed on the canvas automatically.",
+              "After Cashfree confirms payment, pixels are allocated and revealed on the canvas automatically.",
               "You can verify your purchase on the live canvas and in your on-screen receipt.",
               "If you have a payment or delivery issue, contact us by email (see Contact page). Refunds are not offered.",
             ]}
@@ -48,7 +48,7 @@ export default function ShippingPage() {
         <LegalSection title="Service area">
           <p>
             The website is accessible worldwide, but purchases are intended for customers in India paying in
-            INR through Razorpay.
+            INR through Cashfree.
           </p>
         </LegalSection>
 

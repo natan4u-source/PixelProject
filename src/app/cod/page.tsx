@@ -29,7 +29,7 @@ export default function CodPage() {
           </p>
           <p className="mt-3">
             All pixel purchases are prepaid digital services. Payment must be completed online at checkout
-            through Razorpay before pixels are allocated.
+            through Cashfree before pixels are allocated.
           </p>
         </LegalSection>
 
@@ -39,7 +39,7 @@ export default function CodPage() {
               "UPI",
               "Credit and debit cards",
               "Net banking",
-              "Other methods enabled by Razorpay at checkout",
+              "Other methods enabled by Cashfree at checkout",
             ]}
           />
         </LegalSection>

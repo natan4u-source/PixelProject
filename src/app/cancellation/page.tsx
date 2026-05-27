@@ -25,7 +25,7 @@ export default function CancellationPage() {
 
         <LegalSection title="Before payment">
           <p>
-            You may abandon checkout at any time before completing payment on Razorpay. No order is created
+            You may abandon checkout at any time before completing payment on Cashfree. No order is created
             and no charge is made.
           </p>
         </LegalSection>
@@ -33,7 +33,7 @@ export default function CancellationPage() {
         <LegalSection title="After payment — cancellation window">
           <LegalList
             items={[
-              `If payment succeeds but pixels are not allocated due to a technical error, you may request cancellation within ${CANCELLATION_WINDOW_MINUTES} minutes of payment by emailing ${SUPPORT_EMAIL} with your Razorpay payment id.`,
+              `If payment succeeds but pixels are not allocated due to a technical error, you may request cancellation within ${CANCELLATION_WINDOW_MINUTES} minutes of payment by emailing ${SUPPORT_EMAIL} with your Cashfree payment id.`,
               "Once pixels are successfully allocated and displayed on the public canvas, the order cannot be cancelled because the digital service is delivered immediately.",
               `${BUSINESS_NAME} may cancel or void a transaction suspected of fraud, duplicate charge, or system error before or after allocation.`,
             ]}
@@ -46,7 +46,7 @@ export default function CancellationPage() {
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--kamal-bright)] underline">
               {SUPPORT_EMAIL}
             </a>{" "}
-            with your Razorpay payment id, order id, date/time of payment, and reason. We respond within 3–5
+            with your Cashfree payment id, order id, date/time of payment, and reason. We respond within 3–5
             business days.
           </p>
         </LegalSection>

@@ -65,7 +65,7 @@ export default function TermsPage() {
             items={[
               `The current price is ₹${PRICE_PER_PIXEL_INR.toLocaleString("en-IN")} per pixel unless we announce a change on the site.`,
               "Prices are shown before you confirm payment.",
-              "Payments are processed by Razorpay. By paying, you also agree to Razorpay's terms where applicable.",
+              "Payments are processed by Cashfree. By paying, you also agree to Cashfree's terms where applicable.",
               "We may refuse or cancel transactions suspected of fraud or error.",
             ]}
           />

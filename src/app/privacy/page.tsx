@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         <LegalSection title="What we collect">
           <LegalList
             items={[
-              "Payment information processed by Razorpay (we do not store your full card or UPI credentials on our servers).",
+              "Payment information processed by Cashfree (we do not store your full card or UPI credentials on our servers).",
               "Pixel purchase records (coordinates, side, colour revealed, amount paid, date and time, and a purchase reference id).",
               "Basic technical data such as browser type, approximate region, referrer, and pages viewed (for analytics and security).",
               "Information you voluntarily send us by email.",
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
           <p>We may share limited data with:</p>
           <LegalList
             items={[
-              "Razorpay — payment processing.",
+              "Cashfree — payment processing.",
               "Hosting providers (e.g. Render) — to run the website and store purchase data.",
               "Authorities — when required by applicable law.",
             ]}
@@ -92,7 +92,7 @@ export default function PrivacyPage() {
             items={[
               "You may choose not to purchase pixels.",
               "For payment or purchase issues, email us at the contact address below.",
-              "You may request information about purchases tied to your payment reference by contacting support with your Razorpay payment id or order id.",
+              "You may request information about purchases tied to your payment reference by contacting support with your Cashfree payment id or order id.",
             ]}
           />
         </LegalSection>

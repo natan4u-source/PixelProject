@@ -39,7 +39,7 @@ export default function ProductsPage() {
             ))}
           </div>
           <p className="mt-4 text-sm text-white/55">
-            Payment is collected online at checkout via Razorpay (UPI, cards, net banking). No cash on
+            Payment is collected online at checkout via Cashfree (UPI, cards, net banking). No cash on
             delivery. See our{" "}
             <a href="/cod" className="text-[var(--kamal-bright)] underline">
               COD policy
