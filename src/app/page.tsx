@@ -522,13 +522,13 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Battle is live — top strip */}
+          {/* Competition is live — top strip */}
           <div
             id="battle"
             className="battle-live-strip relative z-[1] mb-4 rounded-2xl border border-white/15 bg-[var(--surface-elevated)]/95 p-4 backdrop-blur-md sm:p-5"
           >
             <h2 className="text-center text-xs font-bold uppercase tracking-[0.25em] text-white/80 sm:text-sm">
-              The Battle is Live
+              The Competition is Live
             </h2>
 
             {battleLeader && battleLeader !== "tie" && (
@@ -546,7 +546,7 @@ export default function HomePage() {
 
             {battleLeader === "tie" && totalBattleSold > 0 && (
               <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-white/55 sm:text-xs">
-                ⚖️ Dead heat — tied on pixels sold
+                ⚖️ Dead heat — it&apos;s a tie
               </p>
             )}
 
@@ -568,10 +568,6 @@ export default function HomePage() {
                 {cockroachSold.toLocaleString("en-IN")}
               </span>
             </div>
-
-            <p className="mt-2 text-center text-[10px] uppercase tracking-[0.15em] text-white/35 sm:text-xs">
-              {totalBattleSold.toLocaleString("en-IN")} pixels sold in the war
-            </p>
           </div>
 
           {loadError && (
