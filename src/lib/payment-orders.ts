@@ -115,6 +115,16 @@ export async function getPaymentOrderByGatewayId(
   return store[gatewayOrderId] ?? null;
 }
 
+export async function getPaymentOrderByPurchaseId(
+  purchaseId: string,
+): Promise<PaymentOrderRecord | null> {
+  const store = await readStore();
+  for (const record of Object.values(store)) {
+    if (record.purchaseId === purchaseId) return record;
+  }
+  return null;
+}
+
 export async function claimPaymentOrderForFulfillment(
   gatewayOrderId: string,
 ): Promise<PaymentClaimResult> {

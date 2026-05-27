@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
+import { getPaymentOrderByPurchaseId } from "@/lib/payment-orders";
 import { readPurchases } from "@/lib/purchases";
 import { sideFromSearchParams } from "@/lib/side-params";
 
@@ -28,9 +29,22 @@ export async function GET(request: Request) {
 
   const { purchases, total } = await readPurchases(side, { limit, offset });
 
+  const purchasesWithCashfree = await Promise.all(
+    purchases.map(async (purchase) => {
+      const order = await getPaymentOrderByPurchaseId(purchase.id);
+      if (!order?.gatewayOrderId) return purchase;
+      return {
+        ...purchase,
+        cashfreeOrderId: order.gatewayOrderId,
+        cashfreePaymentId: order.gatewayPaymentId,
+        amountPaise: order.amountPaise,
+      };
+    }),
+  );
+
   return NextResponse.json({
     side,
-    purchases,
+    purchases: purchasesWithCashfree,
     total,
     limit,
     offset,

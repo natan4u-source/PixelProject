@@ -31,6 +31,10 @@ export type PurchaseResult = {
   totalInr: number;
   side: CanvasSide;
   pixels: PixelRecord[];
+  /** Cashfree order_id (same as checkout order id) — use for refunds in Cashfree dashboard */
+  cashfreeOrderId?: string;
+  /** Cashfree cf_payment_id — primary id for issuing a refund */
+  cashfreePaymentId?: string;
 };
 
 function queueReveal(side: CanvasSide, records: PixelRecord[]) {

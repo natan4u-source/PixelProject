@@ -26,6 +26,9 @@ type Purchase = {
   pixelCount: number;
   totalInr: number;
   pixels: { x: number; y: number; color: string }[];
+  cashfreeOrderId?: string;
+  cashfreePaymentId?: string;
+  amountPaise?: number;
 };
 
 type AnalyticsSummary = {
@@ -548,6 +551,26 @@ function PurchaseRow({
 
       {expanded && (
         <div className="border-t border-[var(--border)] bg-[var(--bg)] px-4 py-3">
+          {(purchase.cashfreeOrderId || purchase.cashfreePaymentId) && (
+            <div className="mb-3 rounded-lg border border-[var(--border)]/80 bg-[var(--surface)] p-3 text-xs">
+              <p className="font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Cashfree (for refunds)
+              </p>
+              {purchase.cashfreeOrderId && (
+                <p className="mt-1 font-mono text-[var(--text)]">
+                  Order: {purchase.cashfreeOrderId}
+                </p>
+              )}
+              {purchase.cashfreePaymentId && (
+                <p className="mt-1 font-mono text-[var(--text)]">
+                  Payment: {purchase.cashfreePaymentId}
+                </p>
+              )}
+              <p className="mt-1 text-[var(--muted)]">
+                Purchase ref: {purchase.id.slice(0, 8).toUpperCase()}
+              </p>
+            </div>
+          )}
           <p className="mb-2 text-xs uppercase tracking-wide text-[var(--muted)]">Pixels</p>
           <div className="max-h-48 overflow-y-auto">
             <table className="w-full text-sm">

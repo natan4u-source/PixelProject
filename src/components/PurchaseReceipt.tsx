@@ -23,6 +23,8 @@ export type PurchaseReceiptData = {
   totalInr: number;
   side?: CanvasSide;
   pixels: ReceiptPixel[];
+  cashfreeOrderId?: string;
+  cashfreePaymentId?: string;
 };
 
 type Props = {
@@ -297,7 +299,13 @@ export function PurchaseReceipt({ receipt, onClose }: Props) {
         {showDetails && (
           <>
             <div className="space-y-3 px-6 pb-4 text-sm">
-              <ReceiptRow label="Receipt #" value={shortId} mono />
+              <ReceiptRow label="Purchase ref" value={shortId} mono />
+              {receipt.cashfreeOrderId ? (
+                <ReceiptRow label="Cashfree order" value={receipt.cashfreeOrderId} mono />
+              ) : null}
+              {receipt.cashfreePaymentId ? (
+                <ReceiptRow label="Cashfree payment" value={receipt.cashfreePaymentId} mono />
+              ) : null}
               <ReceiptRow label="Date" value={date} />
               <ReceiptRow
                 label="Type"

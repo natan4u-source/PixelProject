@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-error";
-import { verifyAndFulfillCashfreePayment } from "@/lib/payments";
+import {
+  enrichPurchaseReceiptForSupport,
+  verifyAndFulfillCashfreePayment,
+} from "@/lib/payments";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +26,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing order id." }, { status: 400 });
     }
 
-    const receipt = await verifyAndFulfillCashfreePayment(orderId);
+    const receipt = await enrichPurchaseReceiptForSupport(
+      await verifyAndFulfillCashfreePayment(orderId),
+    );
     return NextResponse.json({ receipt });
   } catch (err) {
     if (err instanceof Error) {

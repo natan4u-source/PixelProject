@@ -19,6 +19,7 @@ import {
   claimPaymentOrderForFulfillment,
   completePaymentOrderFulfillment,
   getPaymentOrderByGatewayId,
+  getPaymentOrderByPurchaseId,
   releasePaymentOrderClaim,
   savePaymentOrder,
 } from "./payment-orders";
@@ -93,6 +94,18 @@ function amountForOrder(input: CreateOrderInput) {
   return inrToPaise(input.count * PRICE_PER_PIXEL_INR);
 }
 
+function enrichReceiptWithCashfree(
+  receipt: PurchaseResult,
+  cashfreeOrderId: string,
+  cashfreePaymentId: string,
+): PurchaseResult {
+  return {
+    ...receipt,
+    cashfreeOrderId: receipt.cashfreeOrderId ?? cashfreeOrderId,
+    cashfreePaymentId: receipt.cashfreePaymentId ?? cashfreePaymentId,
+  };
+}
+
 export async function createPaymentOrder(input: CreateOrderInput): Promise<CreateOrderResponse> {
   assertPaymentsConfigured();
 
@@ -163,7 +176,9 @@ async function fulfillPaymentOrder(
 ): Promise<PurchaseResult> {
   const claim = await claimPaymentOrderForFulfillment(gatewayOrderId);
 
-  if (claim.kind === "paid") return claim.receipt;
+  if (claim.kind === "paid") {
+    return enrichReceiptWithCashfree(claim.receipt, gatewayOrderId, gatewayPaymentId);
+  }
   if (claim.kind === "missing") throw new Error("Payment order not found.");
   if (claim.kind === "busy") {
     throw new Error("Payment is being processed. Try again in a few seconds.");
@@ -176,8 +191,17 @@ async function fulfillPaymentOrder(
       ...order,
       side: order.side ?? "a",
     });
-    await completePaymentOrderFulfillment(gatewayOrderId, gatewayPaymentId, receipt);
-    return receipt;
+    const receiptWithCashfree: PurchaseResult = {
+      ...receipt,
+      cashfreeOrderId: gatewayOrderId,
+      cashfreePaymentId: gatewayPaymentId,
+    };
+    await completePaymentOrderFulfillment(
+      gatewayOrderId,
+      gatewayPaymentId,
+      receiptWithCashfree,
+    );
+    return receiptWithCashfree;
   } catch (error) {
     await releasePaymentOrderClaim(gatewayOrderId);
     throw error;
@@ -204,7 +228,17 @@ export async function verifyAndFulfillCashfreePayment(orderId: string): Promise<
     throw new Error("Payment amount mismatch.");
   }
 
-  return fulfillPaymentOrder(orderId, payment.paymentId);
+  const receipt = await fulfillPaymentOrder(orderId, payment.paymentId);
+  return enrichReceiptWithCashfree(receipt, orderId, payment.paymentId);
+}
+
+export async function enrichPurchaseReceiptForSupport(
+  receipt: PurchaseResult,
+): Promise<PurchaseResult> {
+  if (receipt.cashfreeOrderId && receipt.cashfreePaymentId) return receipt;
+  const order = await getPaymentOrderByPurchaseId(receipt.id);
+  if (!order?.gatewayOrderId || !order.gatewayPaymentId) return receipt;
+  return enrichReceiptWithCashfree(receipt, order.gatewayOrderId, order.gatewayPaymentId);
 }
 
 export async function fulfillWebhookPayment(
