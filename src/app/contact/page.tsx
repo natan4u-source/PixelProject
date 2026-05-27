@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Contact — KAMAL vs COCKROACH",
-  description: "Contact details for kamalvscockroach.com — email, phone, and registered address.",
+  description: "Contact kamalvscockroach.com by email.",
 };
 
 export default function ContactPage() {

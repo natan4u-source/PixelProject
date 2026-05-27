@@ -6,7 +6,6 @@ import {
   PRICE_PER_PIXEL_INR,
   SUPPORT_EMAIL,
 } from "./config";
-import { BUSINESS_PHONE } from "./business";
 import {
   createCashfreeOrder,
   getCashfreeCheckoutMode,
@@ -120,7 +119,7 @@ async function createCashfreePaymentOrder(
   const cf = await createCashfreeOrder({
     orderId: internalId,
     amountPaise,
-    customerPhone: BUSINESS_PHONE || "9999999999",
+    customerPhone: "9999999999",
     customerEmail: SUPPORT_EMAIL,
     customerName: BUSINESS_NAME,
   });
