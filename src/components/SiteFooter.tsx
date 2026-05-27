@@ -7,10 +7,6 @@ const LEGAL_LINKS = [
   { href: "/terms", label: "Terms & Conditions" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/refund", label: "Return & Refund" },
-  { href: "/cancellation", label: "Cancellation" },
-  { href: "/shipping", label: "Shipping" },
-  { href: "/cod", label: "COD" },
-  { href: "/products", label: "Products" },
   { href: "/contact", label: "Contact" },
 ] as const;
 

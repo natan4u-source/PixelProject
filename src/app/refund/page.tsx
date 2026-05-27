@@ -69,11 +69,8 @@ export default function RefundPage() {
 
         <LegalSection title="Cancellation">
           <p>
-            See our{" "}
-            <a href="/cancellation" className="text-[var(--kamal-bright)] underline">
-              Cancellation Policy
-            </a>{" "}
-            for checkout cancellation before payment only.
+            You may abandon checkout before completing payment on Cashfree. No order is created until
+            payment succeeds and pixels are allocated.
           </p>
         </LegalSection>
 
