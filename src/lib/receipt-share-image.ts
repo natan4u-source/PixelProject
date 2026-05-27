@@ -16,9 +16,10 @@ export type ShareReceiptInput = {
   pixels: ShareReceiptPixel[];
 };
 
+/** Instagram feed — compact share card (content-height) */
 const CARD_WIDTH = 1080;
-const CARD_HEIGHT = 1920;
-const PADDING = 36;
+const CARD_HEIGHT = 940;
+const PADDING = 32;
 
 type TeamVisual = {
   accent: string;
@@ -34,6 +35,8 @@ type TeamVisual = {
   teamBanner: string;
   tagline: string;
   badgeTitle: string;
+  rivalAccent: string;
+  rivalBright: string;
 };
 
 const TEAM_VISUAL: Record<"kamal" | "cockroach", TeamVisual> = {
@@ -44,13 +47,15 @@ const TEAM_VISUAL: Record<"kamal" | "cockroach", TeamVisual> = {
     gold: "#ffd54f",
     bgTop: "#0a0806",
     bgMid: "#1a1008",
-    bgBottom: "#0d0a08",
+    bgBottom: "#120e0a",
     gridEmpty: "#1e1a16",
     gridGlow: "rgba(255, 140, 0, 0.55)",
     symbol: "🪷",
     teamBanner: "TEAM KAMAL",
     tagline: "BUILD THE NATION",
     badgeTitle: "FOUNDING WARRIOR",
+    rivalAccent: "#2ee65a",
+    rivalBright: "#7dffb0",
   },
   cockroach: {
     accent: "#2ee65a",
@@ -59,13 +64,15 @@ const TEAM_VISUAL: Record<"kamal" | "cockroach", TeamVisual> = {
     gold: "#b8ff9a",
     bgTop: "#060a08",
     bgMid: "#081a10",
-    bgBottom: "#080d0a",
+    bgBottom: "#0a120e",
     gridEmpty: "#141a16",
     gridGlow: "rgba(61, 227, 92, 0.5)",
     symbol: "🪳",
     teamBanner: "TEAM COCKROACH",
     tagline: "SPREAD THE ROT",
     badgeTitle: "FOUNDING WARRIOR",
+    rivalAccent: "#ff7a00",
+    rivalBright: "#ffb347",
   },
 };
 
@@ -100,32 +107,45 @@ function drawRoundedRect(
 function drawBackground(ctx: CanvasRenderingContext2D, visual: TeamVisual) {
   const bg = ctx.createLinearGradient(0, 0, 0, CARD_HEIGHT);
   bg.addColorStop(0, visual.bgTop);
-  bg.addColorStop(0.45, visual.bgMid);
+  bg.addColorStop(0.35, visual.bgMid);
   bg.addColorStop(1, visual.bgBottom);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
 
+  const glowK = ctx.createRadialGradient(180, 400, 0, 180, 400, 420);
+  glowK.addColorStop(0, visual.gridGlow);
+  glowK.addColorStop(1, "transparent");
+  ctx.fillStyle = glowK;
+  ctx.fillRect(0, 0, CARD_WIDTH / 2, CARD_HEIGHT);
+
+  const glowC = ctx.createRadialGradient(900, 700, 0, 900, 700, 480);
+  glowC.addColorStop(0, "rgba(61, 227, 92, 0.18)");
+  glowC.addColorStop(1, "transparent");
+  ctx.fillStyle = glowC;
+  ctx.fillRect(CARD_WIDTH / 2, 0, CARD_WIDTH / 2, CARD_HEIGHT);
+
   ctx.save();
-  ctx.globalAlpha = 0.12;
-  for (let i = 0; i < 8; i++) {
-    const x = 80 + i * 120;
-    ctx.fillStyle = visual.accent;
+  ctx.globalAlpha = 0.1;
+  for (let i = 0; i < 14; i++) {
+    const x = 40 + i * 72;
+    const y = 520 + (i % 3) * 180;
+    ctx.fillStyle = i % 2 === 0 ? visual.accent : visual.rivalAccent;
     ctx.beginPath();
-    ctx.moveTo(x, CARD_HEIGHT * 0.22);
-    ctx.lineTo(x + 30, CARD_HEIGHT * 0.12);
-    ctx.lineTo(x + 60, CARD_HEIGHT * 0.22);
-    ctx.lineTo(x + 30, CARD_HEIGHT * 0.32);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 22, y - 36);
+    ctx.lineTo(x + 44, y);
+    ctx.lineTo(x + 22, y + 36);
     ctx.closePath();
     ctx.fill();
   }
   ctx.restore();
 
-  for (let i = 0; i < 28; i++) {
-    const sx = (i * 97 + 40) % CARD_WIDTH;
-    const sy = (i * 131 + 200) % (CARD_HEIGHT - 400);
-    const r = 2 + (i % 4);
-    ctx.fillStyle = i % 3 === 0 ? visual.accentBright : visual.gold;
-    ctx.globalAlpha = 0.25 + (i % 5) * 0.08;
+  for (let i = 0; i < 48; i++) {
+    const sx = (i * 73 + 20) % CARD_WIDTH;
+    const sy = (i * 97 + 80) % CARD_HEIGHT;
+    const r = 1.5 + (i % 3);
+    ctx.fillStyle = i % 4 === 0 ? visual.accentBright : visual.gold;
+    ctx.globalAlpha = 0.2 + (i % 5) * 0.06;
     ctx.beginPath();
     ctx.arc(sx, sy, r, 0, Math.PI * 2);
     ctx.fill();
@@ -133,23 +153,23 @@ function drawBackground(ctx: CanvasRenderingContext2D, visual: TeamVisual) {
   ctx.globalAlpha = 1;
 
   ctx.strokeStyle = visual.accent;
-  ctx.lineWidth = 5;
-  drawRoundedRect(ctx, PADDING, PADDING, CARD_WIDTH - PADDING * 2, CARD_HEIGHT - PADDING * 2, 28);
+  ctx.lineWidth = 4;
+  drawRoundedRect(ctx, PADDING, PADDING, CARD_WIDTH - PADDING * 2, CARD_HEIGHT - PADDING * 2, 24);
   ctx.stroke();
 }
 
-function drawVictoryTitle(ctx: CanvasRenderingContext2D, visual: TeamVisual, y: number) {
+function drawHeroHeadline(ctx: CanvasRenderingContext2D, visual: TeamVisual, y: number) {
   ctx.textAlign = "center";
-  ctx.font = "900 96px Georgia, 'Times New Roman', serif";
+  ctx.font = "900 72px Georgia, 'Times New Roman', serif";
   ctx.fillStyle = visual.accent;
   ctx.shadowColor = visual.gridGlow;
-  ctx.shadowBlur = 24;
-  ctx.fillText("VICTORY!", CARD_WIDTH / 2, y);
+  ctx.shadowBlur = 20;
+  ctx.fillText("I DID MY PART", CARD_WIDTH / 2, y);
   ctx.shadowBlur = 0;
 
-  ctx.font = "600 22px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.fillText("★  ONE PIXEL. ONE SOLDIER. ONE NATION.  ★", CARD_WIDTH / 2, y + 44);
+  ctx.font = "800 26px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillText("WE ARE HERE TO WIN", CARD_WIDTH / 2, y + 44);
 }
 
 function drawPurchaseHeadline(ctx: CanvasRenderingContext2D, visual: TeamVisual, count: number, y: number) {
@@ -158,11 +178,11 @@ function drawPurchaseHeadline(ctx: CanvasRenderingContext2D, visual: TeamVisual,
   const suffix = count === 1 ? " PIXEL!" : " PIXELS!";
 
   ctx.textAlign = "left";
-  ctx.font = "900 52px system-ui, sans-serif";
+  ctx.font = "900 44px system-ui, sans-serif";
   const prefixW = ctx.measureText(prefix).width;
-  ctx.font = "900 58px system-ui, sans-serif";
+  ctx.font = "900 50px system-ui, sans-serif";
   const countW = ctx.measureText(countStr).width;
-  ctx.font = "900 52px system-ui, sans-serif";
+  ctx.font = "900 44px system-ui, sans-serif";
   const suffixW = ctx.measureText(suffix).width;
   const totalW = prefixW + countW + suffixW;
   let x = (CARD_WIDTH - totalW) / 2;
@@ -172,18 +192,18 @@ function drawPurchaseHeadline(ctx: CanvasRenderingContext2D, visual: TeamVisual,
   x += prefixW;
 
   ctx.fillStyle = visual.accentBright;
-  ctx.font = "900 58px system-ui, sans-serif";
+  ctx.font = "900 50px system-ui, sans-serif";
   ctx.fillText(countStr, x, y);
   x += countW;
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "900 52px system-ui, sans-serif";
+  ctx.font = "900 44px system-ui, sans-serif";
   ctx.fillText(suffix, x, y);
 }
 
 function drawTeamBanner(ctx: CanvasRenderingContext2D, visual: TeamVisual, y: number) {
-  const bannerW = 520;
-  const bannerH = 56;
+  const bannerW = 480;
+  const bannerH = 50;
   const bx = (CARD_WIDTH - bannerW) / 2;
 
   ctx.fillStyle = visual.accent;
@@ -193,13 +213,9 @@ function drawTeamBanner(ctx: CanvasRenderingContext2D, visual: TeamVisual, y: nu
   ctx.globalAlpha = 1;
 
   ctx.textAlign = "center";
-  ctx.font = "900 34px system-ui, sans-serif";
+  ctx.font = "900 30px system-ui, sans-serif";
   ctx.fillStyle = "#0a0a0a";
-  ctx.fillText(`${visual.symbol}  ${visual.teamBanner}  ${visual.symbol}`, CARD_WIDTH / 2, y + 40);
-
-  ctx.font = "600 20px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.7)";
-  ctx.fillText(`★  ${visual.tagline}  ★`, CARD_WIDTH / 2, y + bannerH + 32);
+  ctx.fillText(`${visual.symbol}  ${visual.teamBanner}  ${visual.symbol}`, CARD_WIDTH / 2, y + 35);
 }
 
 function drawMiniCanvas(
@@ -211,20 +227,20 @@ function drawMiniCanvas(
   w: number,
   h: number,
 ) {
-  const cols = 22;
-  const rows = 14;
+  const cols = 24;
+  const rows = 16;
   const cellW = w / cols;
   const cellH = h / rows;
 
-  drawRoundedRect(ctx, x, y, w, h, 16);
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  drawRoundedRect(ctx, x, y, w, h, 14);
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.fill();
   ctx.strokeStyle = visual.accent;
   ctx.lineWidth = 2;
   ctx.stroke();
 
   const filled = new Set<string>();
-  const sample = samplePixels(pixels, 180);
+  const sample = samplePixels(pixels, 200);
   for (const px of sample) {
     const col = Math.min(cols - 1, Math.floor((px.x / 1000) * cols));
     const row = Math.min(rows - 1, Math.floor((px.y / 1000) * rows));
@@ -244,8 +260,7 @@ function drawMiniCanvas(
           const r = Math.min(rows - 1, Math.floor((p.y / 1000) * rows));
           return c === col && r === row;
         });
-        ctx.fillStyle =
-          px && px.color !== "transparent" ? px.color : visual.accentBright;
+        ctx.fillStyle = px && px.color !== "transparent" ? px.color : visual.accentBright;
         ctx.fillRect(cx, cy, cw, ch);
       } else {
         ctx.fillStyle = visual.gridEmpty;
@@ -264,25 +279,25 @@ function drawMiniCanvas(
     ctx.lineWidth = 3;
     ctx.strokeRect(hx + 1, hy + 1, cellW - 2, cellH - 2);
     ctx.strokeStyle = visual.accentBright;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.strokeRect(hx - 2, hy - 2, cellW + 4, cellH + 4);
 
-    ctx.font = "700 28px 'Segoe Print', 'Comic Sans MS', cursive";
+    ctx.font = "700 24px 'Segoe Print', 'Comic Sans MS', cursive";
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
-    ctx.fillText("MY PIXEL", x + w * 0.55, y + h * 0.72);
+    ctx.fillText("MY PIXEL", x + w * 0.52, y + h * 0.7);
 
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.52, y + h * 0.68);
-    ctx.quadraticCurveTo(x + w * 0.45, y + h * 0.55, hx + cellW / 2, hy + cellH / 2);
+    ctx.moveTo(x + w * 0.5, y + h * 0.66);
+    ctx.quadraticCurveTo(x + w * 0.42, y + h * 0.52, hx + cellW / 2, hy + cellH / 2);
     ctx.stroke();
   } else if (pixels.length > 3) {
     ctx.textAlign = "center";
-    ctx.font = "700 22px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText(`${pixels.length.toLocaleString("en-IN")} pixels claimed`, x + w / 2, y + h - 18);
+    ctx.font = "700 20px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    ctx.fillText(`${pixels.length.toLocaleString("en-IN")} pixels claimed`, x + w / 2, y + h - 14);
   }
 }
 
@@ -297,90 +312,100 @@ function drawInfoBox(
   label: string,
   value: string,
 ) {
-  drawRoundedRect(ctx, x, y, w, h, 12);
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  drawRoundedRect(ctx, x, y, w, h, 10);
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fill();
   ctx.strokeStyle = visual.accent;
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.font = "28px system-ui, Segoe UI Emoji, sans-serif";
+  ctx.font = "26px system-ui, Segoe UI Emoji, sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(icon, x + 16, y + 38);
+  ctx.fillText(icon, x + 14, y + 34);
 
-  ctx.font = "700 18px system-ui, sans-serif";
+  ctx.font = "700 16px system-ui, sans-serif";
   ctx.fillStyle = visual.accentBright;
-  ctx.fillText(label, x + 56, y + 28);
+  ctx.fillText(label, x + 50, y + 24);
 
-  ctx.font = "600 22px system-ui, sans-serif";
+  ctx.font = "600 20px system-ui, sans-serif";
   ctx.fillStyle = "#ffffff";
-  const maxW = w - 68;
   let display = value;
+  const maxW = w - 58;
   while (ctx.measureText(display).width > maxW && display.length > 4) {
     display = `${display.slice(0, -4)}…`;
   }
-  ctx.fillText(display, x + 56, y + 54);
+  ctx.fillText(display, x + 50, y + 48);
 }
 
 function drawBadgeBox(ctx: CanvasRenderingContext2D, visual: TeamVisual, x: number, y: number, w: number, h: number) {
-  drawRoundedRect(ctx, x, y, w, h, 12);
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.fill();
-  ctx.strokeStyle = visual.gold;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  ctx.font = "32px system-ui, Segoe UI Emoji, sans-serif";
-  ctx.fillText("🛡️", x + 14, y + 42);
-
-  ctx.font = "700 16px system-ui, sans-serif";
-  ctx.fillStyle = visual.gold;
-  ctx.fillText("BADGE UNLOCKED", x + 58, y + 26);
-
-  ctx.font = "800 20px system-ui, sans-serif";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(visual.badgeTitle, x + 58, y + 52);
-}
-
-function drawThankYouBox(ctx: CanvasRenderingContext2D, visual: TeamVisual, x: number, y: number, w: number, h: number) {
-  drawRoundedRect(ctx, x, y, w, h, 14);
+  drawRoundedRect(ctx, x, y, w, h, 10);
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fill();
   ctx.strokeStyle = visual.gold;
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.font = "36px system-ui, Segoe UI Emoji, sans-serif";
-  ctx.fillText(`${visual.symbol}`, x + 16, y + 44);
+  ctx.font = "28px system-ui, Segoe UI Emoji, sans-serif";
+  ctx.fillText("🛡️", x + 12, y + 36);
 
-  ctx.font = "800 22px system-ui, sans-serif";
+  ctx.font = "700 14px system-ui, sans-serif";
   ctx.fillStyle = visual.gold;
-  ctx.fillText("THANK YOU,", x + 64, y + 30);
-  ctx.fillText("WARRIOR!", x + 64, y + 56);
+  ctx.fillText("BADGE UNLOCKED", x + 52, y + 22);
 
-  ctx.font = "400 14px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.65)";
-  const line = "You are among the early soldiers building internet history.";
-  ctx.fillText(line.slice(0, 38), x + 16, y + 82);
-  ctx.fillText(line.slice(38), x + 16, y + 100);
-
-  ctx.fillStyle = visual.accent;
-  drawRoundedRect(ctx, x + 16, y + h - 36, 140, 26, 8);
-  ctx.fill();
-  ctx.font = "700 13px system-ui, sans-serif";
-  ctx.fillStyle = "#0a0a0a";
-  ctx.fillText("★ EARLY SOLDIER", x + 28, y + h - 16);
+  ctx.font = "800 18px system-ui, sans-serif";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(visual.badgeTitle, x + 52, y + 46);
 }
 
-function drawWarCta(ctx: CanvasRenderingContext2D, visual: TeamVisual, cx: number, y: number) {
-  ctx.textAlign = "center";
-  ctx.font = "900 32px system-ui, sans-serif";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText("THIS WAR IS NOT OVER!", cx, y);
+function drawActionRow(
+  ctx: CanvasRenderingContext2D,
+  visual: TeamVisual,
+  y: number,
+  w: number,
+) {
+  const colW = (w - 24) / 3;
+  const x0 = PADDING + 12;
+  const h = 118;
 
-  ctx.font = "italic 800 28px Georgia, serif";
+  drawRoundedRect(ctx, x0, y, colW, h, 12);
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fill();
+  ctx.strokeStyle = visual.gold;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.font = "32px system-ui, Segoe UI Emoji, sans-serif";
+  ctx.fillText(visual.symbol, x0 + 14, y + 40);
+  ctx.font = "800 18px system-ui, sans-serif";
+  ctx.fillStyle = visual.gold;
+  ctx.fillText("THANK YOU,", x0 + 54, y + 28);
+  ctx.fillText("WARRIOR!", x0 + 54, y + 52);
+  ctx.font = "600 12px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.fillText("Early soldier on", x0 + 14, y + 78);
+  ctx.fillText("the live canvas", x0 + 14, y + 94);
+  ctx.fillStyle = visual.accent;
+  drawRoundedRect(ctx, x0 + 14, y + h - 30, 120, 22, 6);
+  ctx.fill();
+  ctx.font = "700 11px system-ui, sans-serif";
+  ctx.fillStyle = "#0a0a0a";
+  ctx.fillText("★ EARLY SOLDIER", x0 + 24, y + h - 14);
+
+  const x1 = x0 + colW + 12;
+  ctx.textAlign = "center";
+  ctx.font = "900 26px system-ui, sans-serif";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText("WE ARE HERE", x1 + colW / 2, y + 38);
+  ctx.fillText("TO WIN", x1 + colW / 2, y + 68);
+  ctx.font = "italic 800 20px Georgia, serif";
   ctx.fillStyle = visual.accentBright;
-  ctx.fillText("CAN YOUR SIDE WIN?", cx, y + 38);
+  ctx.fillText("Join the competition →", x1 + colW / 2, y + 98);
+
+  const x2 = x0 + (colW + 12) * 2;
+  ctx.font = "700 15px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.fillText("SHARE YOUR", x2 + colW / 2, y + 22);
+  ctx.fillText("VICTORY", x2 + colW / 2, y + 42);
+  drawShareIcons(ctx, x2 + 8, y + 52, colW - 16);
 }
 
 function drawShareIcons(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
@@ -390,11 +415,11 @@ function drawShareIcons(ctx: CanvasRenderingContext2D, x: number, y: number, w: 
     { label: "X", bg: "#111" },
     { label: "↗", bg: "#444" },
   ];
-  const size = 48;
+  const size = 42;
   const gap = (w - icons.length * size) / (icons.length + 1);
 
   ctx.textAlign = "center";
-  ctx.font = "700 16px system-ui, sans-serif";
+  ctx.font = "700 14px system-ui, sans-serif";
 
   icons.forEach((icon, i) => {
     const ix = x + gap + i * (size + gap);
@@ -411,41 +436,66 @@ function drawShareIcons(ctx: CanvasRenderingContext2D, x: number, y: number, w: 
     }
     ctx.fill();
     ctx.fillStyle = "#fff";
-    ctx.fillText(icon.label, ix + size / 2, y + size / 2 + 6);
+    ctx.fillText(icon.label, ix + size / 2, y + size / 2 + 5);
   });
 }
 
-function drawFooterBar(ctx: CanvasRenderingContext2D, visual: TeamVisual, y: number) {
-  const barH = 72;
-  drawRoundedRect(ctx, PADDING + 8, y, CARD_WIDTH - (PADDING + 8) * 2, barH, 14);
-  ctx.fillStyle = "rgba(0,0,0,0.75)";
-  ctx.fill();
+function drawCompetitionStrip(ctx: CanvasRenderingContext2D, visual: TeamVisual, y: number) {
+  const x = PADDING + 12;
+  const w = CARD_WIDTH - (PADDING + 12) * 2;
+  const h = 108;
 
-  const btnW = 340;
-  ctx.fillStyle = visual.accent;
-  drawRoundedRect(ctx, PADDING + 24, y + 12, btnW, barH - 24, 10);
+  drawRoundedRect(ctx, x, y, w, h, 14);
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.fill();
-  ctx.font = "800 20px system-ui, sans-serif";
-  ctx.fillStyle = "#0a0a0a";
-  ctx.textAlign = "center";
-  ctx.fillText("BUY YOUR PIXEL NOW", PADDING + 24 + btnW / 2, y + 44);
-
-  const urlX = PADDING + 24 + btnW + 20;
-  const urlW = CARD_WIDTH - urlX - PADDING - 32;
-  drawRoundedRect(ctx, urlX, y + 14, urlW, barH - 28, 10);
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.2)";
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 1;
   ctx.stroke();
-  ctx.font = "500 22px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.75)";
-  ctx.fillText(SITE_NAME, urlX + urlW / 2, y + 44);
+
+  ctx.textAlign = "center";
+  ctx.font = "800 18px system-ui, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillText("THE COMPETITION IS LIVE ON", x + w / 2, y + 28);
+  ctx.fillStyle = visual.gold;
+  ctx.font = "900 22px system-ui, sans-serif";
+  ctx.fillText(SITE_NAME, x + w / 2, y + 54);
+
+  const barY = y + 72;
+  const barH = 14;
+  const barX = x + 24;
+  const barW = w - 48;
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  drawRoundedRect(ctx, barX, barY, barW, barH, 7);
+  ctx.fill();
+
+  const kamalShare = 48;
+  const kamalW = (barW * kamalShare) / 100;
+  const kamalGrad = ctx.createLinearGradient(barX, barY, barX + kamalW, barY);
+  kamalGrad.addColorStop(0, "#e07800");
+  kamalGrad.addColorStop(1, "#ffc266");
+  ctx.fillStyle = kamalGrad;
+  drawRoundedRect(ctx, barX, barY, kamalW, barH, 7);
+  ctx.fill();
+
+  const cockGrad = ctx.createLinearGradient(barX + kamalW, barY, barX + barW, barY);
+  cockGrad.addColorStop(0, "#22b84a");
+  cockGrad.addColorStop(1, "#6dff85");
+  ctx.fillStyle = cockGrad;
+  drawRoundedRect(ctx, barX + kamalW, barY, barW - kamalW, barH, 7);
+  ctx.fill();
+
+  ctx.font = "700 13px system-ui, sans-serif";
+  ctx.fillStyle = "#ffc266";
+  ctx.textAlign = "left";
+  ctx.fillText("KAMAL", barX, barY - 6);
+  ctx.fillStyle = "#6dff85";
+  ctx.textAlign = "right";
+  ctx.fillText("COCKROACH", barX + barW, barY - 6);
 }
 
 export function buildReceiptShareCaption(count: number, side: CanvasSide): string {
   const team = SIDE_INFO[side];
-  return `I just bought ${count.toLocaleString("en-IN")} ${team.symbol} pixel${count === 1 ? "" : "s"} for ${team.label} on ${SITE_NAME}! Join the live pixel war: ${SITE_URL}`;
+  return `I did my part — bought ${count.toLocaleString("en-IN")} ${team.symbol} pixel${count === 1 ? "" : "s"} for ${team.label}. We are here to win! ${SITE_URL}`;
 }
 
 export async function generateReceiptShareImage(receipt: ShareReceiptInput): Promise<Blob> {
@@ -457,8 +507,6 @@ export async function generateReceiptShareImage(receipt: ShareReceiptInput): Pro
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const receiptId = receipt.id.slice(0, 8).toUpperCase();
-
   const canvas = document.createElement("canvas");
   canvas.width = CARD_WIDTH;
   canvas.height = CARD_HEIGHT;
@@ -467,45 +515,35 @@ export async function generateReceiptShareImage(receipt: ShareReceiptInput): Pro
 
   drawBackground(ctx, visual);
 
-  ctx.font = "72px system-ui, Segoe UI Emoji, sans-serif";
+  ctx.font = "64px system-ui, Segoe UI Emoji, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(visual.symbol, CARD_WIDTH / 2, 120);
+  ctx.fillText(visual.symbol, CARD_WIDTH / 2, 88);
 
-  drawVictoryTitle(ctx, visual, 200);
-  drawPurchaseHeadline(ctx, visual, count, 310);
-  drawTeamBanner(ctx, visual, 360);
+  drawHeroHeadline(ctx, visual, 148);
+  drawPurchaseHeadline(ctx, visual, count, 228);
+  drawTeamBanner(ctx, visual, 268);
 
-  const midY = 470;
-  const gridW = 500;
-  const gridH = 320;
-  const gridX = PADDING + 20;
+  const midY = 318;
+  const gridW = 468;
+  const gridH = 296;
+  const gridX = PADDING + 12;
   drawMiniCanvas(ctx, visual, receipt.pixels, gridX, midY, gridW, gridH);
 
-  const boxX = gridX + gridW + 24;
-  const boxW = CARD_WIDTH - boxX - PADDING - 20;
+  const boxX = gridX + gridW + 20;
+  const boxW = CARD_WIDTH - boxX - PADDING - 12;
   const boxH = 72;
-  let boxY = midY;
-  drawInfoBox(ctx, visual, boxX, boxY, boxW, boxH, "🧾", "PAID", `₹${receipt.totalInr.toLocaleString("en-IN")}`);
-  boxY += boxH + 12;
+  const badgeH = 78;
+  const stackH = boxH + 12 + badgeH;
+  let boxY = midY + Math.round((gridH - stackH) / 2);
   drawInfoBox(ctx, visual, boxX, boxY, boxW, boxH, "📅", "DATE", date);
   boxY += boxH + 12;
-  drawInfoBox(ctx, visual, boxX, boxY, boxW, boxH, "📄", "RECEIPT #", receiptId);
-  boxY += boxH + 12;
-  drawBadgeBox(ctx, visual, boxX, boxY, boxW, boxH + 8);
+  drawBadgeBox(ctx, visual, boxX, boxY, boxW, badgeH);
 
-  const footerY = midY + gridH + 36;
-  const colW = (CARD_WIDTH - PADDING * 2 - 32) / 3;
+  const actionY = midY + gridH + 20;
+  drawActionRow(ctx, visual, actionY, CARD_WIDTH - PADDING * 2);
 
-  drawThankYouBox(ctx, visual, PADDING + 12, footerY, colW - 8, 130);
-  drawWarCta(ctx, visual, PADDING + 12 + colW + colW / 2, footerY + 50);
-  drawShareIcons(ctx, PADDING + 12 + colW * 2 + 16, footerY + 52, colW - 16);
-
-  ctx.textAlign = "center";
-  ctx.font = "700 18px system-ui, sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.fillText("SHARE YOUR VICTORY", PADDING + 12 + colW * 2 + colW / 2, footerY + 28);
-
-  drawFooterBar(ctx, visual, CARD_HEIGHT - PADDING - 88);
+  const stripY = actionY + 132;
+  drawCompetitionStrip(ctx, visual, stripY);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
