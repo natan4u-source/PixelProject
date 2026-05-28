@@ -12,24 +12,72 @@ export const REFUND_MODE =
 export const CANCELLATION_WINDOW_MINUTES = 30;
 export const DIGITAL_DELIVERY_TIME = "Instant — upon successful payment verification";
 
-export const PRODUCTS = [
+export type ProductListing = {
+  id: string;
+  name: string;
+  description: string;
+  priceInr: number;
+  unit: string;
+  category: "Team Kamal" | "Team Cockroach" | "Digital service";
+};
+
+/** Minimum five listings for payment-gateway product-page compliance */
+export const PRODUCTS: ProductListing[] = [
   {
-    id: "pixel-single",
-    name: "Single pixel purchase",
+    id: "kamal-single-pixel",
+    name: "Team Kamal — single pixel",
     description:
-      "Purchase one pixel coordinate on Canvas A or Canvas B. The pixel is permanently marked as sold and its colour is revealed on the public canvas. Digital service only; no physical goods.",
+      "Buy one pixel on the Kamal canvas. Choose an available coordinate at checkout. The pixel is marked sold and its colour is revealed on the public canvas immediately after payment. Digital service only.",
     priceInr: PRICE_PER_PIXEL_INR,
     unit: "per pixel",
+    category: "Team Kamal",
   },
   {
-    id: "pixel-bulk",
-    name: "Bulk pixel purchase",
+    id: "cockroach-single-pixel",
+    name: "Team Cockroach — single pixel",
     description:
-      "Purchase multiple available pixels on one canvas in a single transaction. Random unsold coordinates are allocated. Each pixel is revealed on the public canvas immediately after payment. Digital service only.",
+      "Buy one pixel on the Cockroach canvas. Choose an available coordinate at checkout. The pixel is marked sold and its colour is revealed on the public canvas immediately after payment. Digital service only.",
+    priceInr: PRICE_PER_PIXEL_INR,
+    unit: "per pixel",
+    category: "Team Cockroach",
+  },
+  {
+    id: "kamal-bulk-pixels",
+    name: "Team Kamal — bulk pixels",
+    description:
+      "Buy multiple pixels on the Kamal canvas in one payment. You choose the quantity at checkout; random unsold coordinates are allocated. All pixels are revealed on the public canvas after payment. Digital service only.",
     priceInr: PRICE_PER_PIXEL_INR,
     unit: "per pixel (quantity chosen at checkout)",
+    category: "Team Kamal",
   },
-] as const;
+  {
+    id: "cockroach-bulk-pixels",
+    name: "Team Cockroach — bulk pixels",
+    description:
+      "Buy multiple pixels on the Cockroach canvas in one payment. You choose the quantity at checkout; random unsold coordinates are allocated. All pixels are revealed on the public canvas after payment. Digital service only.",
+    priceInr: PRICE_PER_PIXEL_INR,
+    unit: "per pixel (quantity chosen at checkout)",
+    category: "Team Cockroach",
+  },
+  {
+    id: "kamal-10-pixel-pack",
+    name: "Team Kamal — 10 pixel pack",
+    description:
+      "Pre-defined bundle of 10 pixels on the Kamal canvas in a single transaction. Ten random unsold coordinates are allocated and revealed after payment. Digital service only.",
+    priceInr: PRICE_PER_PIXEL_INR * 10,
+    unit: "per pack (10 pixels)",
+    category: "Team Kamal",
+  },
+  {
+    id: "cockroach-10-pixel-pack",
+    name: "Team Cockroach — 10 pixel pack",
+    description:
+      "Pre-defined bundle of 10 pixels on the Cockroach canvas in a single transaction. Ten random unsold coordinates are allocated and revealed after payment. Digital service only.",
+    priceInr: PRICE_PER_PIXEL_INR * 10,
+    unit: "per pack (10 pixels)",
+    category: "Team Cockroach",
+  },
+];
 
 export function operatorLine(): string {
   return `This website is operated by ${BUSINESS_NAME}.`;

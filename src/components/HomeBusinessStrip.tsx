@@ -44,6 +44,11 @@ export function HomeBusinessStrip() {
             All prices are inclusive of applicable taxes as shown at checkout. Current standard rate: ₹
             {PRICE_PER_PIXEL_INR.toLocaleString("en-IN")} per pixel.
           </p>
+          <p className="mt-2 text-center">
+            <Link href="/products" className="text-xs text-[var(--kamal-bright)] underline hover:text-white">
+              View full product catalogue ({PRODUCTS.length} products)
+            </Link>
+          </p>
         </div>
 
         <nav

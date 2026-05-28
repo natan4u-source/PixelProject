@@ -40,6 +40,11 @@ export default function ContactPage() {
             <h2 className="war-title text-2xl text-white">Policies</h2>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-white/70 marker:text-[var(--cockroach)] sm:text-base">
               <li>
+                <Link href="/products" className="text-[var(--cockroach-bright)] underline">
+                  Products &amp; services
+                </Link>
+              </li>
+              <li>
                 <Link href="/refund" className="text-[var(--cockroach-bright)] underline">
                   Return &amp; Refund Policy
                 </Link>
