@@ -2,6 +2,7 @@
 
 import { SiteFooter } from "@/components/SiteFooter";
 import { UpiAppPicker } from "@/components/UpiAppPicker";
+import { UpiPaymentHints } from "@/components/UpiPaymentHints";
 import { UpiCheckoutOverlay } from "@/components/UpiCheckoutOverlay";
 import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
@@ -192,13 +193,10 @@ function UpiPayContent() {
               </button>
             </div>
 
-            <p className="text-center text-xs leading-relaxed text-white/45">
-              Desktop: scan QR above. Mobile: tap PhonePe, GPay, or Paytm.
-              <span className="mt-2 block text-white/35">
-                PhonePe may show “QR from gallery” — tap DISMISS, then Pay. Your ₹
-                {amountInr.toLocaleString("en-IN")} order is fine.
-              </span>
+            <p className="text-center text-xs text-white/45">
+              Desktop: scan QR above. Mobile: tap your UPI app below (not gallery QR).
             </p>
+            <UpiPaymentHints amountInr={amountInr} className="text-xs" />
 
             <button
               type="button"

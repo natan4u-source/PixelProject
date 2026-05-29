@@ -35,34 +35,54 @@ export const UPI_APP_OPTIONS: {
   },
 ];
 
-export function buildUpiAppUri(appId: UpiAppId, input: UpiPayInput): string {
-  const q = buildUpiQueryString(input);
-  switch (appId) {
-    case "phonepe":
-      return `phonepe://upi/pay?${q}`;
-    case "gpay":
-      return `tez://upi/pay?${q}`;
-    case "paytm":
-      return `paytmmp://pay?${q}`;
-    case "any":
-      return buildUpiPayUri(input);
-  }
-}
-
-const ANDROID_PACKAGES: Record<Exclude<UpiAppId, "any">, string> = {
-  phonepe: "com.phonepe.app",
-  gpay: "com.google.android.apps.nbu.paisa.user",
-  paytm: "net.one97.paytm",
+type UpiAppSpec = {
+  androidPackage: string;
+  /** Primary deep link (iOS / fallback). */
+  primaryUri: (query: string) => string;
+  /** Extra schemes if primary does not open the app. */
+  fallbackUris?: (query: string) => string[];
 };
 
-/** Standard UPI intent into a specific app (avoids PhonePe “gallery QR” path). */
+const UPI_APP_SPECS: Record<Exclude<UpiAppId, "any">, UpiAppSpec> = {
+  phonepe: {
+    androidPackage: "com.phonepe.app",
+    primaryUri: (q) => `phonepe://upi/pay?${q}`,
+  },
+  gpay: {
+    androidPackage: "com.google.android.apps.nbu.paisa.user",
+    primaryUri: (q) => `tez://upi/pay?${q}`,
+    fallbackUris: (q) => [`gpay://upi/pay?${q}`, `googlepay://upi/pay?${q}`],
+  },
+  paytm: {
+    androidPackage: "net.one97.paytm",
+    primaryUri: (q) => `paytmmp://upi/pay?${q}`,
+    fallbackUris: (q) => [`paytmmp://pay?${q}`],
+  },
+};
+
+/**
+ * Android: NPCI UPI intent (mode=04) routed into the target app package.
+ * Same pattern for PhonePe, GPay, and Paytm — avoids “QR from gallery” flows.
+ */
 export function buildAndroidAppIntent(appId: UpiAppId, input: UpiPayInput): string | null {
   const q = buildUpiQueryString(input);
   if (appId === "any") {
     return `intent://pay?${q}#Intent;scheme=upi;package=;end;`;
   }
-  const pkg = ANDROID_PACKAGES[appId];
-  return `intent://pay?${q}#Intent;scheme=upi;package=${pkg};end;`;
+  const spec = UPI_APP_SPECS[appId];
+  return `intent://pay?${q}#Intent;scheme=upi;package=${spec.androidPackage};end;`;
+}
+
+export function buildUpiAppUri(appId: UpiAppId, input: UpiPayInput): string {
+  const q = buildUpiQueryString(input);
+  if (appId === "any") return buildUpiPayUri(input);
+  return UPI_APP_SPECS[appId].primaryUri(q);
+}
+
+export function getUpiAppFallbackUris(appId: UpiAppId, input: UpiPayInput): string[] {
+  if (appId === "any") return [];
+  const q = buildUpiQueryString(input);
+  return UPI_APP_SPECS[appId].fallbackUris?.(q) ?? [];
 }
 
 export function isAndroidUserAgent() {
@@ -80,11 +100,21 @@ function navigateToUri(uri: string) {
   document.body.removeChild(anchor);
 }
 
+function tryFallbackUris(uris: string[], index: number) {
+  if (index >= uris.length) return;
+  window.setTimeout(() => {
+    try {
+      window.location.assign(uris[index]!);
+    } catch {
+      // ignore
+    }
+    tryFallbackUris(uris, index + 1);
+  }, 700);
+}
+
 /** Open a specific UPI app with amount and VPA pre-filled. Call from a user click. */
 export function openUpiApp(appId: UpiAppId, input: UpiPayInput): void {
   if (typeof window === "undefined") return;
-
-  const appUri = buildUpiAppUri(appId, input);
 
   if (isAndroidUserAgent()) {
     const intent = buildAndroidAppIntent(appId, input);
@@ -94,17 +124,10 @@ export function openUpiApp(appId: UpiAppId, input: UpiPayInput): void {
     }
   }
 
-  navigateToUri(appUri);
-
-  if (appId === "gpay") {
-    const gpayAlt = appUri.replace(/^tez:/, "gpay:");
-    window.setTimeout(() => {
-      try {
-        window.location.assign(gpayAlt);
-      } catch {
-        // ignore
-      }
-    }, 500);
+  navigateToUri(buildUpiAppUri(appId, input));
+  const fallbacks = getUpiAppFallbackUris(appId, input);
+  if (fallbacks.length > 0) {
+    tryFallbackUris(fallbacks, 0);
   }
 }
 

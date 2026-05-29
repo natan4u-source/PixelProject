@@ -1,6 +1,7 @@
 "use client";
 
 import { UpiAppPicker } from "@/components/UpiAppPicker";
+import { UpiPaymentHints } from "@/components/UpiPaymentHints";
 import type { UpiPayInput } from "@/lib/upi-client";
 
 type Props = {
@@ -54,11 +55,10 @@ export function UpiCheckoutOverlay({
           Cancel
         </button>
 
-        <p className="mt-4 text-center text-[10px] leading-relaxed text-white/35">
-          <strong className="text-white/50">PhonePe:</strong> If you see a grey bar about “QR from
-          gallery”, tap <strong className="text-white/50">DISMISS</strong> — then tap Pay (₹50 is
-          allowed). Use Chrome/Safari, not Instagram browser.
-        </p>
+        <UpiPaymentHints
+          amountInr={payment.amountInr}
+          className="mt-4"
+        />
       </div>
     </div>
   );
