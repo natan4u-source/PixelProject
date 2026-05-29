@@ -16,6 +16,8 @@ const BLOCKED_PATHS = [
   /\/payment-orders\.json$/i,
   /\/visitor-events\.ndjson$/i,
   /\/ebook-purchases\.ndjson$/i,
+  /\/upi-submissions\.ndjson$/i,
+  /\/upi-statement-uploads\.ndjson$/i,
 ];
 
 export function middleware(request: NextRequest) {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AdminUpiPanel } from "@/components/admin/AdminUpiPanel";
 import { getAdminApiBase } from "@/lib/admin-path";
 import { CANVAS_SIDES, DEFAULT_SIDE, SIDE_INFO, type CanvasSide } from "@/lib/sides";
 
@@ -473,6 +474,8 @@ export default function AdminPage() {
           )}
         </section>
       )}
+
+      {secret && <AdminUpiPanel secret={secret} />}
 
       <section className="mt-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <h2 className="text-lg font-semibold">Upload hidden image — {SIDE_INFO[activeSide].label}</h2>

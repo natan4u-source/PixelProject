@@ -15,6 +15,7 @@ import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
 import { getVotingClosedMessage, isVotingOpen } from "@/lib/voting";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type SideStatus = {
@@ -60,6 +61,8 @@ const FEATURES = [
 export default function HomePage() {
   const [sides, setSides] = useState<Record<CanvasSide, SideStatus> | null>(null);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
+  const [upiPaymentsEnabled, setUpiPaymentsEnabled] = useState(false);
+  const router = useRouter();
   const [selected, setSelected] = useState<SelectedPixel | null>(null);
   const [selectedIsSold, setSelectedIsSold] = useState(false);
   const [revealedVersion, setRevealedVersion] = useState<Record<CanvasSide, number>>({ a: 0, b: 0 });
@@ -78,6 +81,7 @@ export default function HomePage() {
       const data = await res.json();
       if (data.sides) setSides(data.sides);
       setPaymentsEnabled(Boolean(data.paymentsEnabled));
+      setUpiPaymentsEnabled(Boolean(data.upiPaymentsEnabled));
       setLoadError(null);
     } catch {
       setLoadError("Could not load saved sales. Check that npm run dev is running.");
@@ -239,6 +243,10 @@ export default function HomePage() {
     setMessage(null);
 
     try {
+      if (upiPaymentsEnabled) {
+        router.push(`/pay/upi?side=${side}&type=single&x=${x}&y=${y}`);
+        return;
+      }
       if (paymentsEnabled) {
         const receiptData = await payOnline(side, { type: "single", x, y });
         await finishPurchase(side, receiptData, { x, y });
@@ -277,6 +285,11 @@ export default function HomePage() {
     setMessage(null);
 
     try {
+      if (upiPaymentsEnabled) {
+        setBulkOpenForSide(null);
+        router.push(`/pay/upi?side=${side}&type=bulk&count=${count}`);
+        return;
+      }
       if (paymentsEnabled) {
         const receiptData = await payOnline(side, { type: "bulk", count });
         setBulkOpenForSide(null);
@@ -562,6 +575,7 @@ export default function HomePage() {
                 ready={selectedStatus.ready}
                 loading={loadingSide === selected.side}
                 paymentsEnabled={paymentsEnabled}
+                upiPaymentsEnabled={upiPaymentsEnabled}
                 votingOpen={votingOpen}
                 onBuy={handleBuy}
                 onClear={() => {

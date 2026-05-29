@@ -11,7 +11,11 @@ import {
   getStatusCacheTtlSec,
   isPaymentsEnabled,
   isPostgresEnabled,
+  isUpiPaymentsEnabled,
+  isPixelCheckoutEnabled,
 } from "@/lib/env";
+import { getUpiPayeeName, UPI_QR_IMAGE_PATH } from "@/lib/upi-config";
+import { getUpiVpa } from "@/lib/env";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { ensureSalesMigrated } from "@/lib/migrate-sales";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -65,8 +69,13 @@ export async function GET(request: Request) {
       const body = JSON.stringify({
         sides,
         paymentsEnabled: isPaymentsEnabled(),
+        upiPaymentsEnabled: isUpiPaymentsEnabled(),
+        pixelCheckoutEnabled: isPixelCheckoutEnabled(),
         paymentProvider: getActivePaymentProvider(),
         cashfreeEnv: getCashfreeEnv(),
+        upiVpa: getUpiVpa(),
+        upiPayeeName: getUpiPayeeName(),
+        upiQrPath: UPI_QR_IMAGE_PATH,
       });
 
       return new NextResponse(body, {
@@ -93,8 +102,13 @@ export async function GET(request: Request) {
     const body = JSON.stringify({
       ...status,
       paymentsEnabled: isPaymentsEnabled(),
+      upiPaymentsEnabled: isUpiPaymentsEnabled(),
+      pixelCheckoutEnabled: isPixelCheckoutEnabled(),
       paymentProvider: getActivePaymentProvider(),
       cashfreeEnv: getCashfreeEnv(),
+      upiVpa: getUpiVpa(),
+      upiPayeeName: getUpiPayeeName(),
+      upiQrPath: UPI_QR_IMAGE_PATH,
       votingOpen: isVotingOpen(),
       votingEndsAt: VOTING_END_ISO,
     });

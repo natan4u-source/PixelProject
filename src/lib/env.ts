@@ -60,8 +60,23 @@ export function getActivePaymentProvider(): PaymentProvider | null {
   return null;
 }
 
+const DEFAULT_UPI_VPA = "7678571962@hdfc";
+
+export function getUpiVpa() {
+  return process.env.NEXT_PUBLIC_UPI_VPA?.trim() || DEFAULT_UPI_VPA;
+}
+
+export function isUpiPaymentsEnabled() {
+  return Boolean(getUpiVpa());
+}
+
+/** Online checkout: UPI for pixels when configured; Cashfree still used for ebooks. */
 export function isPaymentsEnabled() {
   return isCashfreeEnabled();
+}
+
+export function isPixelCheckoutEnabled() {
+  return isUpiPaymentsEnabled() || isCashfreeEnabled();
 }
 
 export function isProduction() {

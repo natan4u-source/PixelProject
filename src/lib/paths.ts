@@ -5,6 +5,8 @@ export const DATA_DIR = path.join(process.cwd(), "data");
 export const PAYMENT_ORDERS_PATH = path.join(DATA_DIR, "payment-orders.json");
 export const VISITOR_EVENTS_PATH = path.join(DATA_DIR, "visitor-events.ndjson");
 export const EBOOK_PURCHASES_PATH = path.join(DATA_DIR, "ebook-purchases.ndjson");
+export const UPI_SUBMISSIONS_PATH = path.join(DATA_DIR, "upi-submissions.ndjson");
+export const UPI_STATEMENT_UPLOADS_PATH = path.join(DATA_DIR, "upi-statement-uploads.ndjson");
 
 export const EBOOKS_CONTENT_DIR = path.join(process.cwd(), "content", "ebooks");
 
