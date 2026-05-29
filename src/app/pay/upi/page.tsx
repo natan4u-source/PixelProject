@@ -6,7 +6,7 @@ import { UpiPaymentHints } from "@/components/UpiPaymentHints";
 import { UpiCheckoutOverlay } from "@/components/UpiCheckoutOverlay";
 import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
-import type { UpiPayInput } from "@/lib/upi-client";
+import { isMobileUserAgent, type UpiPayInput } from "@/lib/upi-client";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -39,6 +39,11 @@ function UpiPayContent() {
     payeeName: string;
     qrPath: string;
   } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileUserAgent());
+  }, []);
 
   useEffect(() => {
     fetch(`/api/status?all=true&t=${Date.now()}`)
@@ -172,16 +177,25 @@ function UpiPayContent() {
               amountLabel={`₹${amountInr.toLocaleString("en-IN")}`}
             />
 
-            <div className="rounded-2xl border border-white/10 bg-[var(--surface-elevated)]/90 p-6 text-center">
-              <Image
-                src={upiConfig?.qrPath ?? "/upi-qr.png"}
-                alt="UPI QR code"
-                width={280}
-                height={280}
-                className="mx-auto rounded-xl"
-                priority
-              />
-              <p className="mt-4 font-mono text-sm text-white">
+            <UpiPaymentHints amountInr={amountInr} className="text-xs" />
+
+            {!isMobile && (
+              <div className="rounded-2xl border border-white/10 bg-[var(--surface-elevated)]/90 p-6 text-center">
+                <p className="mb-3 text-xs text-white/50">Desktop only — scan with UPI app</p>
+                <Image
+                  src={upiConfig?.qrPath ?? "/upi-qr.png"}
+                  alt="UPI QR code"
+                  width={280}
+                  height={280}
+                  className="mx-auto rounded-xl"
+                  priority
+                />
+              </div>
+            )}
+
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center">
+              <p className="text-xs text-white/50">UPI ID (if app asks)</p>
+              <p className="mt-1 font-mono text-sm text-white">
                 {upiConfig?.vpa ?? "7678571962@hdfc"}
               </p>
               <button
@@ -192,11 +206,6 @@ function UpiPayContent() {
                 Copy UPI ID
               </button>
             </div>
-
-            <p className="text-center text-xs text-white/45">
-              Desktop: scan QR above. Mobile: tap your UPI app below (not gallery QR).
-            </p>
-            <UpiPaymentHints amountInr={amountInr} className="text-xs" />
 
             <button
               type="button"

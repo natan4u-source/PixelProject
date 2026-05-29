@@ -5,24 +5,26 @@ export type UpiLinkInput = {
   note?: string;
 };
 
-/** NPCI UPI query — mode 04 = intent/deep-link (not QR-from-gallery). */
+/**
+ * NPCI UPI query for deep links.
+ * Omit `mode` — mode=04 triggered “QR from gallery” warnings in PhonePe/GPay.
+ * Paytm tolerates links as-is; default push (00) works for VPA collect.
+ */
 export function buildUpiQueryString(input: UpiLinkInput) {
   const params = new URLSearchParams();
   params.set("pa", input.vpa.trim());
   params.set("pn", input.payeeName.trim().slice(0, 50));
   params.set("am", input.amountInr.toFixed(2));
   params.set("cu", "INR");
-  params.set("mode", "04");
   if (input.note) params.set("tn", input.note.trim().slice(0, 80));
   return params.toString();
 }
 
-/** Build NPCI-style UPI deep link (opens app chooser on Android). */
+/** Generic UPI chooser (any installed app). */
 export function buildUpiPayUri(input: UpiLinkInput) {
   return `upi://pay?${buildUpiQueryString(input)}`;
 }
 
-/** Normalize UTR / UPI reference from user input or bank CSV. */
 export function normalizeUtr(raw: string): string {
   const cleaned = raw.replace(/\s+/g, "").toUpperCase();
   const digits = cleaned.replace(/\D/g, "");

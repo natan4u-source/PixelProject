@@ -37,40 +37,44 @@ export const UPI_APP_OPTIONS: {
 
 type UpiAppSpec = {
   androidPackage: string;
-  /** Primary deep link (iOS / fallback). */
+  /** Native scheme for Android intent (not generic upi://). */
+  intentScheme: string;
+  intentPath: string;
   primaryUri: (query: string) => string;
-  /** Extra schemes if primary does not open the app. */
   fallbackUris?: (query: string) => string[];
 };
 
 const UPI_APP_SPECS: Record<Exclude<UpiAppId, "any">, UpiAppSpec> = {
   phonepe: {
     androidPackage: "com.phonepe.app",
-    primaryUri: (q) => `phonepe://upi/pay?${q}`,
+    intentScheme: "phonepe",
+    intentPath: "pay",
+    primaryUri: (q) => `phonepe://pay?${q}`,
   },
   gpay: {
     androidPackage: "com.google.android.apps.nbu.paisa.user",
+    intentScheme: "tez",
+    intentPath: "upi/pay",
     primaryUri: (q) => `tez://upi/pay?${q}`,
-    fallbackUris: (q) => [`gpay://upi/pay?${q}`, `googlepay://upi/pay?${q}`],
+    fallbackUris: (q) => [`gpay://upi/pay?${q}`],
   },
   paytm: {
     androidPackage: "net.one97.paytm",
-    primaryUri: (q) => `paytmmp://upi/pay?${q}`,
-    fallbackUris: (q) => [`paytmmp://pay?${q}`],
+    intentScheme: "paytmmp",
+    intentPath: "pay",
+    primaryUri: (q) => `paytmmp://pay?${q}`,
+    fallbackUris: (q) => [`paytmmp://upi/pay?${q}`],
   },
 };
 
-/**
- * Android: NPCI UPI intent (mode=04) routed into the target app package.
- * Same pattern for PhonePe, GPay, and Paytm — avoids “QR from gallery” flows.
- */
+/** Android intent via each app’s own scheme (Paytm-style). Generic upi:// broke PhonePe/GPay. */
 export function buildAndroidAppIntent(appId: UpiAppId, input: UpiPayInput): string | null {
   const q = buildUpiQueryString(input);
   if (appId === "any") {
     return `intent://pay?${q}#Intent;scheme=upi;package=;end;`;
   }
   const spec = UPI_APP_SPECS[appId];
-  return `intent://pay?${q}#Intent;scheme=upi;package=${spec.androidPackage};end;`;
+  return `intent://${spec.intentPath}?${q}#Intent;scheme=${spec.intentScheme};package=${spec.androidPackage};end;`;
 }
 
 export function buildUpiAppUri(appId: UpiAppId, input: UpiPayInput): string {
@@ -79,15 +83,14 @@ export function buildUpiAppUri(appId: UpiAppId, input: UpiPayInput): string {
   return UPI_APP_SPECS[appId].primaryUri(q);
 }
 
-export function getUpiAppFallbackUris(appId: UpiAppId, input: UpiPayInput): string[] {
-  if (appId === "any") return [];
-  const q = buildUpiQueryString(input);
-  return UPI_APP_SPECS[appId].fallbackUris?.(q) ?? [];
-}
-
 export function isAndroidUserAgent() {
   if (typeof navigator === "undefined") return false;
   return /Android/i.test(navigator.userAgent);
+}
+
+export function isMobileUserAgent() {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
 function navigateToUri(uri: string) {
@@ -100,19 +103,7 @@ function navigateToUri(uri: string) {
   document.body.removeChild(anchor);
 }
 
-function tryFallbackUris(uris: string[], index: number) {
-  if (index >= uris.length) return;
-  window.setTimeout(() => {
-    try {
-      window.location.assign(uris[index]!);
-    } catch {
-      // ignore
-    }
-    tryFallbackUris(uris, index + 1);
-  }, 700);
-}
-
-/** Open a specific UPI app with amount and VPA pre-filled. Call from a user click. */
+/** Open a specific UPI app — native scheme on Android (matches working Paytm flow). */
 export function openUpiApp(appId: UpiAppId, input: UpiPayInput): void {
   if (typeof window === "undefined") return;
 
@@ -124,14 +115,23 @@ export function openUpiApp(appId: UpiAppId, input: UpiPayInput): void {
     }
   }
 
-  navigateToUri(buildUpiAppUri(appId, input));
-  const fallbacks = getUpiAppFallbackUris(appId, input);
-  if (fallbacks.length > 0) {
-    tryFallbackUris(fallbacks, 0);
+  const primary = buildUpiAppUri(appId, input);
+  navigateToUri(primary);
+
+  if (appId !== "any") {
+    const fallbacks = UPI_APP_SPECS[appId].fallbackUris?.(buildUpiQueryString(input)) ?? [];
+    if (fallbacks[0]) {
+      window.setTimeout(() => {
+        try {
+          window.location.assign(fallbacks[0]!);
+        } catch {
+          // ignore
+        }
+      }, 600);
+    }
   }
 }
 
-/** Generic UPI chooser (any installed app). */
 export function openUpiPayment(input: UpiPayInput): void {
   openUpiApp("any", input);
 }

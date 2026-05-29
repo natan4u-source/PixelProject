@@ -21,7 +21,8 @@ export function UpiAppPicker({ payment, amountLabel, className = "" }: Props) {
   return (
     <div className={className}>
       <p className="text-center text-sm text-white/65">
-        Pay <strong className="text-white">{amountLabel}</strong> — choose your app
+        Pay <strong className="text-white">{amountLabel}</strong> — tap your app below
+        <span className="mt-1 block text-xs text-amber-200/80">Do not scan QR from gallery</span>
       </p>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {UPI_APP_OPTIONS.map((app) => (
