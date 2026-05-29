@@ -4,6 +4,7 @@ import {
   GRID_HEIGHT,
   GRID_WIDTH,
   PRICE_PER_PIXEL_INR,
+  SITE_URL,
   SUPPORT_EMAIL,
 } from "./config";
 import {
@@ -15,8 +16,14 @@ import {
   paiseToInr,
 } from "./cashfree";
 import { assertCashfreeConfigured, isCashfreeEnabled, isPaymentsEnabled } from "./env";
+import { assertEbookPdfExists, getEbookById } from "./ebooks";
+import {
+  fulfillEbookPurchase,
+  type EbookPurchaseResult,
+} from "./ebook-purchases";
 import {
   claimPaymentOrderForFulfillment,
+  completeEbookPaymentOrderFulfillment,
   completePaymentOrderFulfillment,
   getPaymentOrderByGatewayId,
   getPaymentOrderByPurchaseId,
@@ -42,8 +49,13 @@ export type CreateOrderResponse = {
   cashfreeMode: "sandbox" | "production";
   amountInr: number;
   currency: "INR";
-  side: CanvasSide;
+  side?: CanvasSide;
+  productId?: string;
 };
+
+export type VerifyPaymentResult =
+  | { kind: "pixel"; receipt: PurchaseResult }
+  | { kind: "ebook"; ebook: EbookPurchaseResult };
 
 export function assertPaymentsConfigured() {
   if (!isPaymentsEnabled()) {
@@ -148,6 +160,44 @@ export async function createPaymentOrder(input: CreateOrderInput): Promise<Creat
   };
 }
 
+export async function createEbookPaymentOrder(productId: string): Promise<CreateOrderResponse> {
+  assertPaymentsConfigured();
+
+  const ebook = getEbookById(productId);
+  if (!ebook) throw new Error("Unknown ebook product.");
+  assertEbookPdfExists(productId);
+
+  const amountPaise = inrToPaise(ebook.priceInr);
+  const internalId = randomUUID();
+
+  const cf = await createCashfreeOrder({
+    orderId: internalId,
+    amountPaise,
+    customerPhone: "9999999999",
+    customerEmail: SUPPORT_EMAIL,
+    customerName: BUSINESS_NAME,
+    returnUrl: `${SITE_URL}/ebooks/thank-you?order_id={order_id}`,
+  });
+
+  await savePaymentOrder({
+    id: internalId,
+    gatewayOrderId: internalId,
+    type: "ebook",
+    productId: ebook.id,
+    amountPaise,
+  });
+
+  return {
+    provider: "cashfree",
+    orderId: cf.orderId,
+    paymentSessionId: cf.paymentSessionId,
+    cashfreeMode: getCashfreeCheckoutMode(),
+    amountInr: inrToCashfreeAmount(amountPaise),
+    currency: "INR",
+    productId: ebook.id,
+  };
+}
+
 async function fulfillFromStoredOrder(order: {
   side: CanvasSide;
   type: "single" | "bulk";
@@ -170,14 +220,34 @@ async function fulfillFromStoredOrder(order: {
   return purchasePixelCount(order.side, order.count);
 }
 
+async function fulfillEbookPaymentOrder(
+  gatewayOrderId: string,
+  gatewayPaymentId: string,
+  productId: string,
+): Promise<EbookPurchaseResult> {
+  const ebook = await fulfillEbookPurchase({
+    productId,
+    cashfreeOrderId: gatewayOrderId,
+    cashfreePaymentId: gatewayPaymentId,
+  });
+  await completeEbookPaymentOrderFulfillment(gatewayOrderId, gatewayPaymentId, ebook);
+  return ebook;
+}
+
 async function fulfillPaymentOrder(
   gatewayOrderId: string,
   gatewayPaymentId: string,
-): Promise<PurchaseResult> {
+): Promise<VerifyPaymentResult> {
   const claim = await claimPaymentOrderForFulfillment(gatewayOrderId);
 
   if (claim.kind === "paid") {
-    return enrichReceiptWithCashfree(claim.receipt, gatewayOrderId, gatewayPaymentId);
+    return {
+      kind: "pixel",
+      receipt: enrichReceiptWithCashfree(claim.receipt, gatewayOrderId, gatewayPaymentId),
+    };
+  }
+  if (claim.kind === "paid-ebook") {
+    return { kind: "ebook", ebook: claim.ebook };
   }
   if (claim.kind === "missing") throw new Error("Payment order not found.");
   if (claim.kind === "busy") {
@@ -187,9 +257,20 @@ async function fulfillPaymentOrder(
   const order = claim.order;
 
   try {
+    if (order.type === "ebook") {
+      if (!order.productId) throw new Error("Invalid ebook payment order.");
+      const ebook = await fulfillEbookPaymentOrder(
+        gatewayOrderId,
+        gatewayPaymentId,
+        order.productId,
+      );
+      return { kind: "ebook", ebook };
+    }
+
     const receipt = await fulfillFromStoredOrder({
       ...order,
       side: order.side ?? "a",
+      type: order.type === "bulk" ? "bulk" : "single",
     });
     const receiptWithCashfree: PurchaseResult = {
       ...receipt,
@@ -201,14 +282,16 @@ async function fulfillPaymentOrder(
       gatewayPaymentId,
       receiptWithCashfree,
     );
-    return receiptWithCashfree;
+    return { kind: "pixel", receipt: receiptWithCashfree };
   } catch (error) {
     await releasePaymentOrderClaim(gatewayOrderId);
     throw error;
   }
 }
 
-export async function verifyAndFulfillCashfreePayment(orderId: string): Promise<PurchaseResult> {
+export async function verifyAndFulfillCashfreePayment(
+  orderId: string,
+): Promise<VerifyPaymentResult> {
   if (!isCashfreeEnabled()) {
     throw new Error("Cashfree is not configured.");
   }
@@ -228,8 +311,14 @@ export async function verifyAndFulfillCashfreePayment(orderId: string): Promise<
     throw new Error("Payment amount mismatch.");
   }
 
-  const receipt = await fulfillPaymentOrder(orderId, payment.paymentId);
-  return enrichReceiptWithCashfree(receipt, orderId, payment.paymentId);
+  const result = await fulfillPaymentOrder(orderId, payment.paymentId);
+  if (result.kind === "pixel") {
+    return {
+      kind: "pixel",
+      receipt: enrichReceiptWithCashfree(result.receipt, orderId, payment.paymentId),
+    };
+  }
+  return result;
 }
 
 export async function enrichPurchaseReceiptForSupport(
@@ -245,7 +334,7 @@ export async function fulfillWebhookPayment(
   gatewayOrderId: string,
   gatewayPaymentId: string,
   amountPaise: number,
-): Promise<PurchaseResult | null> {
+): Promise<VerifyPaymentResult | null> {
   const existing = await getPaymentOrderByGatewayId(gatewayOrderId);
   if (!existing) return null;
 
@@ -253,7 +342,9 @@ export async function fulfillWebhookPayment(
     throw new Error("Payment amount mismatch.");
   }
 
-  if (existing.status === "paid" && existing.receipt) return null;
+  if (existing.status === "paid" && (existing.receipt || existing.ebookReceipt)) {
+    return null;
+  }
 
   return fulfillPaymentOrder(gatewayOrderId, gatewayPaymentId);
 }
@@ -262,7 +353,7 @@ export async function fulfillCashfreeWebhookPayment(
   orderId: string,
   paymentId: string,
   amountInr: number,
-): Promise<PurchaseResult | null> {
+): Promise<VerifyPaymentResult | null> {
   const amountPaise = Math.round(amountInr * 100);
   return fulfillWebhookPayment(orderId, paymentId, amountPaise);
 }

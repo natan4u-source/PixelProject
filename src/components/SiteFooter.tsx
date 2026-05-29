@@ -5,6 +5,7 @@ import Link from "next/link";
 
 const LEGAL_LINKS = [
   { href: "/products", label: "Products" },
+  { href: "/ebooks", label: "Ebooks" },
   { href: "/terms", label: "Terms & Conditions" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/refund", label: "Return & Refund" },

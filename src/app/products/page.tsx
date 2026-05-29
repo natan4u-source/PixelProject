@@ -3,6 +3,7 @@ import { LegalBusinessDetails } from "@/components/legal/LegalBusinessDetails";
 import { LegalPageShell, LegalSection } from "@/components/legal/LegalPageShell";
 import { SiteFooter } from "@/components/SiteFooter";
 import { LEGAL_LAST_UPDATED, PRODUCTS } from "@/lib/business";
+import { getEbookById } from "@/lib/ebooks";
 import { PRICE_PER_PIXEL_INR, SITE_NAME, SITE_URL } from "@/lib/config";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -28,10 +29,15 @@ export default function ProductsPage() {
 
         <LegalSection title="Product catalogue">
           <p className="mb-4 text-sm text-white/70">
-            We sell <strong className="text-white">digital pixel placements only</strong> on a public
-            1,000×1,000 canvas competition. No physical goods are shipped. Purchase on the{" "}
+            We sell <strong className="text-white">digital pixel placements</strong> on the public
+            competition canvas and <strong className="text-white">PDF ebooks</strong>. No physical
+            goods are shipped. Pixels: buy on the{" "}
             <Link href="/" className="text-[var(--kamal-bright)] underline">
               home page
+            </Link>
+            . Ebooks:{" "}
+            <Link href="/ebooks" className="text-[var(--kamal-bright)] underline">
+              ebook shop
             </Link>
             .
           </p>
@@ -49,6 +55,14 @@ export default function ProductsPage() {
                 <p className="mt-3 font-mono text-[var(--kamal-bright)]">
                   ₹{product.priceInr.toLocaleString("en-IN")} {product.unit}
                 </p>
+                {product.category === "Ebook" && getEbookById(product.id) && (
+                  <Link
+                    href={`/ebooks/${getEbookById(product.id)!.slug}`}
+                    className="mt-3 inline-block text-sm text-[var(--kamal-bright)] underline"
+                  >
+                    Buy ebook →
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -65,8 +79,8 @@ export default function ProductsPage() {
             available.
           </p>
           <p className="mt-3">
-            Delivery is instant: after successful payment verification, pixels are allocated and revealed
-            on the live public canvas.
+            Delivery is instant: pixels appear on the live canvas after payment; ebooks provide a PDF
+            download link immediately after payment on the ebook thank-you page.
           </p>
         </LegalSection>
 

@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import { randomUUID } from "crypto";
+import type { EbookPurchaseResult } from "./ebook-purchases";
 import type { PurchaseResult } from "./purchase";
 import { withFileLock } from "./file-lock";
 import { DATA_DIR, PAYMENT_ORDERS_PATH } from "./paths";
@@ -11,7 +12,8 @@ export type PaymentOrderRecord = {
   id: string;
   side?: CanvasSide;
   gatewayOrderId: string;
-  type: "single" | "bulk";
+  type: "single" | "bulk" | "ebook";
+  productId?: string;
   x?: number;
   y?: number;
   count?: number;
@@ -21,6 +23,7 @@ export type PaymentOrderRecord = {
   gatewayPaymentId?: string;
   purchaseId?: string;
   receipt?: PurchaseResult;
+  ebookReceipt?: EbookPurchaseResult;
 };
 
 type PaymentOrderStore = Record<string, PaymentOrderRecord>;
@@ -32,6 +35,7 @@ type StoredPaymentOrder = PaymentOrderRecord & {
 
 export type PaymentClaimResult =
   | { kind: "paid"; receipt: PurchaseResult }
+  | { kind: "paid-ebook"; ebook: EbookPurchaseResult }
   | { kind: "claim"; order: PaymentOrderRecord }
   | { kind: "busy" }
   | { kind: "missing" };
@@ -42,7 +46,8 @@ function normalizeRecord(raw: StoredPaymentOrder): PaymentOrderRecord {
     id: raw.id,
     side: raw.side,
     gatewayOrderId,
-    type: raw.type,
+    type: raw.type ?? "single",
+    productId: raw.productId,
     x: raw.x,
     y: raw.y,
     count: raw.count,
@@ -52,6 +57,7 @@ function normalizeRecord(raw: StoredPaymentOrder): PaymentOrderRecord {
     gatewayPaymentId: raw.gatewayPaymentId ?? raw.razorpayPaymentId,
     purchaseId: raw.purchaseId,
     receipt: raw.receipt,
+    ebookReceipt: raw.ebookReceipt,
   };
 }
 
@@ -93,6 +99,7 @@ export async function savePaymentOrder(
       side: input.side,
       gatewayOrderId: input.gatewayOrderId,
       type: input.type,
+      productId: input.productId,
       x: input.x,
       y: input.y,
       count: input.count,
@@ -133,6 +140,10 @@ export async function claimPaymentOrderForFulfillment(
     const existing = store[gatewayOrderId];
     if (!existing) return { kind: "missing" };
 
+    if (existing.status === "paid" && existing.ebookReceipt) {
+      return { kind: "paid-ebook", ebook: existing.ebookReceipt };
+    }
+
     if (existing.status === "paid" && existing.receipt) {
       return { kind: "paid", receipt: existing.receipt };
     }
@@ -163,6 +174,29 @@ export async function completePaymentOrderFulfillment(
       gatewayPaymentId,
       purchaseId: receipt.id,
       receipt,
+    };
+    store[gatewayOrderId] = updated;
+    await writeStore(store);
+    return updated;
+  });
+}
+
+export async function completeEbookPaymentOrderFulfillment(
+  gatewayOrderId: string,
+  gatewayPaymentId: string,
+  ebook: EbookPurchaseResult,
+): Promise<PaymentOrderRecord | null> {
+  return withPaymentStoreLock(async () => {
+    const store = await readStore();
+    const existing = store[gatewayOrderId];
+    if (!existing) return null;
+
+    const updated: PaymentOrderRecord = {
+      ...existing,
+      status: "paid",
+      gatewayPaymentId,
+      purchaseId: ebook.id,
+      ebookReceipt: ebook,
     };
     store[gatewayOrderId] = updated;
     await writeStore(store);

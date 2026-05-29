@@ -26,10 +26,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing order id." }, { status: 400 });
     }
 
-    const receipt = await enrichPurchaseReceiptForSupport(
-      await verifyAndFulfillCashfreePayment(orderId),
-    );
-    return NextResponse.json({ receipt });
+    const result = await verifyAndFulfillCashfreePayment(orderId);
+    if (result.kind === "ebook") {
+      return NextResponse.json({
+        kind: "ebook",
+        ebook: result.ebook,
+        downloadUrl: `/api/ebooks/download?token=${encodeURIComponent(result.ebook.downloadToken)}`,
+      });
+    }
+    const receipt = await enrichPurchaseReceiptForSupport(result.receipt);
+    return NextResponse.json({ kind: "pixel", receipt });
   } catch (err) {
     if (err instanceof Error) {
       if (

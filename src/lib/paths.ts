@@ -4,6 +4,9 @@ import type { CanvasSide } from "./sides";
 export const DATA_DIR = path.join(process.cwd(), "data");
 export const PAYMENT_ORDERS_PATH = path.join(DATA_DIR, "payment-orders.json");
 export const VISITOR_EVENTS_PATH = path.join(DATA_DIR, "visitor-events.ndjson");
+export const EBOOK_PURCHASES_PATH = path.join(DATA_DIR, "ebook-purchases.ndjson");
+
+export const EBOOKS_CONTENT_DIR = path.join(process.cwd(), "content", "ebooks");
 
 /** @deprecated Legacy single-canvas paths — use side helpers instead */
 export const MASTER_VAULT_PATH = path.join(DATA_DIR, "master.enc");

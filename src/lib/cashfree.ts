@@ -61,6 +61,7 @@ export async function createCashfreeOrder(input: {
   customerPhone: string;
   customerEmail: string;
   customerName: string;
+  returnUrl?: string;
 }) {
   assertCashfreeConfigured();
 
@@ -81,7 +82,7 @@ export async function createCashfreeOrder(input: {
         customer_name: input.customerName,
       },
       order_meta: {
-        return_url: `${SITE_URL}/?order_id={order_id}`,
+        return_url: input.returnUrl ?? `${SITE_URL}/?order_id={order_id}`,
         notify_url: `${SITE_URL}/api/payments/cashfree-webhook`,
       },
     }),

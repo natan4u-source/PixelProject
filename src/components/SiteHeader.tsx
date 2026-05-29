@@ -5,10 +5,11 @@ import { isAdminPanelPathname } from "@/lib/admin-path";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV_LINKS = [
+const NAV_LINKS: { href: string; label: string; activePrefix?: string }[] = [
+  { href: "/ebooks", label: "Explore ebooks", activePrefix: "/ebooks" },
   { href: "/what-is-a-pixel", label: "What is a pixel?" },
   { href: "/about", label: "About" },
-] as const;
+];
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -23,8 +24,11 @@ export function SiteHeader() {
         <SiteLogo />
 
         <nav className="flex items-center gap-1 sm:gap-2" aria-label="Main">
-          {NAV_LINKS.map(({ href, label }) => {
-            const active = pathname === href;
+          {NAV_LINKS.map(({ href, label, activePrefix }) => {
+            const active =
+              pathname === href ||
+              (activePrefix !== undefined &&
+                (pathname === activePrefix || pathname.startsWith(`${activePrefix}/`)));
             return (
               <Link
                 key={href}

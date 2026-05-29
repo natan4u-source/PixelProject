@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: Georgia, "Times New Roman", serif; font-size: 11pt; line-height: 1.45; color: #111; }
+  h1 { font-size: 22pt; margin: 0 0 8pt; page-break-after: avoid; }
+  h2.page-head { font-size: 14pt; color: #c45a00; margin-top: 0; padding-top: 6pt; border-top: 3px solid #c45a00; page-break-before: always; }
+  h2.page-head:first-of-type { page-break-before: avoid; border-top: none; }
+  h2 { font-size: 13pt; margin: 14pt 0 6pt; }
+  h3 { font-size: 11.5pt; margin: 10pt 0 4pt; }
+  p, li { margin: 0 0 6pt; }
+  pre { background: #f4f4f4; border: 1px solid #ddd; padding: 8pt; font-size: 8.5pt; line-height: 1.35;
+    white-space: pre-wrap; word-wrap: break-word; page-break-inside: avoid; }
+  code { font-family: Consolas, monospace; font-size: 9pt; }
+  table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 9.5pt; }
+  th, td { border: 1px solid #ccc; padding: 4pt 6pt; text-align: left; }
+  th { background: #f0f0f0; }
+  hr { border: none; border-top: 1px solid #ccc; margin: 12pt 0; }
+</style>
+</head>
+<body>
+<h1>India Digital Product Starter</h1>
+<h2>Cashfree, Render, and payment-gateway compliance for small launches</h2>
+<br />
+<p><strong>By Ninetyone Software Solutions</strong>  </p>
+<p><strong>Version 1.0 — May 2026</strong></p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 1 — What this guide covers</h2>
+<br />
+<p>You are selling <strong>digital goods</strong> in India (ebooks, access, pixels on a website). This ebook explains:</p>
+<br />
+<li>Why gateways ask for <strong>5+ products</strong> on a catalogue page</li>
+<li><strong>Cashfree</strong> checkout basics</li>
+<li><strong>Render</strong> hosting for Next.js</li>
+<li>Common <strong>rejection reasons</strong> and fixes</li>
+<br />
+<p>This is operational guidance, not legal advice. Confirm tax/GST with your CA.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 2 — Digital product = different rules than COD</h2>
+<br />
+<p>Payment gateways classify you by <strong>what the customer receives</strong>:</p>
+<br />
+<table>
+<tr><th>Type</th><th>Typical gateway view</th></tr>
+<tr><td>Physical goods</td><td>Shipping, COD options</td></tr>
+<tr><td>Digital / service</td><td>No shipping; instant fulfilment</td></tr>
+<tr><td>Donation / gamble</td><td>Often blocked</td></tr>
+</table>
+<br />
+<p><strong>kamalvscockroach.com</strong> model: customer pays → pixel or ebook access → <strong>no courier</strong>. Your site must say that clearly on Terms, Refund, and Products pages.</p>
+<br />
+<p><strong>Remove</strong> misleading pages: fake COD, fake shipping timelines, or “cancellation” flows that contradict instant digital delivery.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 3 — The “5 products” catalogue trick (compliant)</h2>
+<br />
+<p>Many Indian aggregators want a <strong>product listing URL</strong> with <strong>multiple SKUs</strong> before live payments.</p>
+<br />
+<p><strong>Compliant approach for a pixel site:</strong></p>
+<li>List <strong>6+ distinct pixel products</strong> (e.g. Team Kamal Single Pixel, Team Cockroach Bulk 10, etc.)</li>
+<li>Each row: name, <strong>₹ price</strong>, short description, <strong>digital delivery</strong></li>
+<li>Link “Buy” to the real purchase flow on home page</li>
+<br />
+<p><strong>For ebooks:</strong></p>
+<li>Add each ebook as its own product row (₹299, PDF download described)</li>
+<li>Do not claim physical shipping</li>
+<br />
+<p><strong>Bad approach:</strong> Five fake ₹1 items that are not buyable — reviewers test links.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 4 — Cashfree integration checklist</h2>
+<br />
+<p><strong>Environment variables (production):</strong></p>
+<li><code>CASHFREE_APP_ID</code></li>
+<li><code>CASHFREE_SECRET_KEY</code></li>
+<li><code>CASHFREE_ENV=production</code> (sandbox for testing only)</li>
+<br />
+<p><strong>Webhook:</strong></p>
+<li>HTTPS URL on your domain</li>
+<li>Verify signature on every event</li>
+<li>Idempotent fulfilment (don’t grant twice)</li>
+<br />
+<p><strong>Customer sees:</strong></p>
+<li>Order id from Cashfree on receipt</li>
+<li>Support can trace <strong>gateway order id</strong> + <strong>payment id</strong></li>
+<br />
+<p><strong>Never:</strong> Commit secrets to GitHub; set them in Render dashboard only.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 5 — Render deployment (Next.js)</h2>
+<br />
+<p>1. Connect GitHub repo to Render <strong>Web Service</strong></p>
+<p>2. Build: <code>npm install &amp;&amp; npm run build</code></p>
+<p>3. Start: <code>npm start</code> (or framework default)</p>
+<p>4. Set <strong>all</strong> env vars before first deploy</p>
+<p>5. Custom domain + HTTPS (required for webhooks)</p>
+<br />
+<p><strong>After deploy:</strong></p>
+<li>Hit <code>/products</code>, <code>/terms</code>, <code>/privacy</code>, <code>/refund</code>, <code>/contact</code></li>
+<li>Test one <strong>₹1 sandbox</strong> payment before going live</li>
+<br />
+<p><strong>Disk:</strong> If you store purchases in JSON files, use Render <strong>persistent disk</strong> or migrate to DB before scale.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 6 — Pages gateways and customers expect</h2>
+<br />
+<table>
+<tr><th>Page</th><th>Purpose</th></tr>
+<tr><td>`/products`</td><td>SKU list (5+)</td></tr>
+<tr><td>`/terms`</td><td>Service description, no gambling</td></tr>
+<tr><td>`/privacy`</td><td>Data use, payment processor named</td></tr>
+<tr><td>`/refund`</td><td>Digital goods policy</td></tr>
+<tr><td>`/contact`</td><td>Email, company name</td></tr>
+</table>
+<br />
+<p><strong>Footer</strong> on every page: links to all of the above.</p>
+<br />
+<p><strong>Company identity:</strong> Legal business name + support email on Contact — not personal phone in footer if you want privacy.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 7 — Refund policy wording (digital)</h2>
+<br />
+<p>Safe pattern:</p>
+<br />
+<li>Sales are <strong>final</strong> once digital good is delivered (pixel placed / PDF sent)</li>
+<li>Failed payment / double charge: contact with <strong>order id</strong> within 7 days</li>
+<li>Refunds processed back to original method via Cashfree when approved</li>
+<li>No refund for “wrong team” if canvas clearly showed choice</li>
+<br />
+<p>Match <strong>actual behaviour</strong> in admin tools.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 8 — Common gateway rejection reasons</h2>
+<br />
+<p>1. <strong>Site incomplete</strong> — placeholder lorem, broken links  </p>
+<p>2. <strong>Too few products</strong> — only one item on <code>/products</code>  </p>
+<p>3. <strong>Mismatch</strong> — homepage price ≠ products page  </p>
+<p>4. <strong>Prohibited category</strong> — gambling, adult, crypto without licence  </p>
+<p>5. <strong>No refund/contact</strong> — missing policies  </p>
+<p>6. <strong>Razorpay named but Cashfree used</strong> — update all copy  </p>
+<p>7. <strong>Test site on HTTP</strong> — use HTTPS custom domain  </p>
+<br />
+<p><strong>Fix order:</strong> Content → products page → policies → HTTPS → reapply.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 9 — Security minimum before marketing spend</h2>
+<br />
+<li>Admin on <strong>non-guessable path</strong> + strong secret (not in URL query)</li>
+<li>Rate limit login and payment APIs</li>
+<li>Webhook: verify amount matches order</li>
+<li>Atomic file writes for purchase JSON</li>
+<li>No public admin link in footer</li>
+<br />
+<p><strong>Ops:</strong> Rotate secrets if repo was ever public with <code>.env</code> committed.</p>
+<br />
+<hr />
+<br />
+<h2 class="page-head">Page 10 — Launch day runbook</h2>
+<br />
+<p><strong>T-7 days:</strong> Sandbox payments, fix receipt email copy  </p>
+<p><strong>T-3 days:</strong> <code>/products</code> live with 6+ SKUs, Instagram assets ready  </p>
+<p><strong>T-1 day:</strong> Render env production, webhook test log clean  </p>
+<p><strong>Launch:</strong> Post + monitor Cashfree dashboard for failures  </p>
+<p><strong>T+1:</strong> Reply support within 4 hours with order id template  </p>
+<br />
+<p><strong>Support reply template:</strong></p>
+<pre><code>Thanks — please share Cashfree order id ______ and screenshot.
+We’ll verify and respond within 24 hours.</code></pre>
+<br />
+<hr />
+<br />
+<p><strong>End of ebook</strong></p>
+<br />
+</body>
+</html>

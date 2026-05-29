@@ -18,8 +18,83 @@ export type ProductListing = {
   description: string;
   priceInr: number;
   unit: string;
-  category: "Team Kamal" | "Team Cockroach" | "Digital service";
+  category: "Team Kamal" | "Team Cockroach" | "Digital service" | "Ebook";
 };
+
+export const EBOOK_PRICE_INR = 2999;
+
+export type EbookListing = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  priceInr: number;
+  unit: string;
+  pages: number;
+};
+
+export const EBOOK_SUPPORT_PROMPTS: EbookListing = {
+  id: "ebook-support-prompts",
+  slug: "customer-support-prompts",
+  name: "Customer Support ChatGPT Prompt Pack",
+  description:
+    "PDF ebook (~10 pages): 100+ copy-paste ChatGPT prompts for payments, UPI issues, refunds, WhatsApp, Instagram DMs, and angry customers. Written for Indian small businesses. Instant digital download.",
+  priceInr: EBOOK_PRICE_INR,
+  unit: "one-time download",
+  pages: 10,
+};
+
+export const EBOOK_PIXEL_WAR_PLAYBOOK: EbookListing = {
+  id: "ebook-pixel-war-playbook",
+  slug: "pixel-war-playbook",
+  name: "How to Win the Pixel War",
+  description:
+    "PDF playbook (~10 pages): choose Team Kamal or Cockroach, single vs bulk pixels, payments, share cards, and deadline strategy for kamalvscockroach.com. Instant digital download.",
+  priceInr: EBOOK_PRICE_INR,
+  unit: "one-time download",
+  pages: 10,
+};
+
+export const EBOOK_INSTAGRAM_VIRAL: EbookListing = {
+  id: "ebook-instagram-viral-stunt",
+  slug: "instagram-viral-stunt",
+  name: "Instagram Growth for Viral Stunt Sites",
+  description:
+    "PDF guide (~10 pages): carousels, Reels scripts, story sequences, captions, hashtags, and WhatsApp loops for competition launches. Instant digital download.",
+  priceInr: EBOOK_PRICE_INR,
+  unit: "one-time download",
+  pages: 10,
+};
+
+export const EBOOK_INDIA_DIGITAL_STARTER: EbookListing = {
+  id: "ebook-india-digital-starter",
+  slug: "india-digital-starter",
+  name: "India Digital Product Starter",
+  description:
+    "PDF starter (~10 pages): Cashfree checkout, Render deploy, 5+ product catalogue compliance, refund copy, and gateway rejection fixes. Instant digital download.",
+  priceInr: EBOOK_PRICE_INR,
+  unit: "one-time download",
+  pages: 10,
+};
+
+export const EBOOK_KAMAL_COCKROACH_COPY: EbookListing = {
+  id: "ebook-kamal-cockroach-copy",
+  slug: "kamal-cockroach-copy",
+  name: "Kamal vs Cockroach Copy Toolkit",
+  description:
+    "PDF toolkit (~10 pages): WhatsApp forwards, Instagram captions, Reels text, comment replies, and 30-day content calendar. Instant digital download.",
+  priceInr: EBOOK_PRICE_INR,
+  unit: "one-time download",
+  pages: 10,
+};
+
+export const EBOOKS: EbookListing[] = [
+  EBOOK_SUPPORT_PROMPTS,
+  EBOOK_PIXEL_WAR_PLAYBOOK,
+  EBOOK_INSTAGRAM_VIRAL,
+  EBOOK_INDIA_DIGITAL_STARTER,
+  EBOOK_KAMAL_COCKROACH_COPY,
+];
 
 /** Minimum five listings for payment-gateway product-page compliance */
 export const PRODUCTS: ProductListing[] = [
@@ -77,6 +152,14 @@ export const PRODUCTS: ProductListing[] = [
     unit: "per pack (10 pixels)",
     category: "Team Cockroach",
   },
+  ...EBOOKS.map((e) => ({
+    id: e.id,
+    name: e.name,
+    description: e.description,
+    priceInr: e.priceInr,
+    unit: e.unit,
+    category: "Ebook" as const,
+  })),
 ];
 
 export function operatorLine(): string {

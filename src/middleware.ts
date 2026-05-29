@@ -15,6 +15,7 @@ const BLOCKED_PATHS = [
   /\/meta\.json$/i,
   /\/payment-orders\.json$/i,
   /\/visitor-events\.ndjson$/i,
+  /\/ebook-purchases\.ndjson$/i,
 ];
 
 export function middleware(request: NextRequest) {
