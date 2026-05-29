@@ -1,4 +1,4 @@
-import { buildUpiPayUri } from "./upi-uri";
+import { buildUpiPayUri, buildUpiQueryString } from "./upi-uri";
 
 export type UpiPayInput = {
   vpa: string;
@@ -35,21 +35,11 @@ export const UPI_APP_OPTIONS: {
   },
 ];
 
-function buildUpiQueryString(input: UpiPayInput) {
-  const params = new URLSearchParams();
-  params.set("pa", input.vpa.trim());
-  params.set("pn", input.payeeName.trim().slice(0, 50));
-  params.set("am", input.amountInr.toFixed(2));
-  params.set("cu", "INR");
-  if (input.note) params.set("tn", input.note.trim().slice(0, 80));
-  return params.toString();
-}
-
 export function buildUpiAppUri(appId: UpiAppId, input: UpiPayInput): string {
   const q = buildUpiQueryString(input);
   switch (appId) {
     case "phonepe":
-      return `phonepe://pay?${q}`;
+      return `phonepe://upi/pay?${q}`;
     case "gpay":
       return `tez://upi/pay?${q}`;
     case "paytm":
@@ -59,20 +49,20 @@ export function buildUpiAppUri(appId: UpiAppId, input: UpiPayInput): string {
   }
 }
 
-const ANDROID_PACKAGES: Record<Exclude<UpiAppId, "any">, { scheme: string; path: string; pkg: string }> =
-  {
-    phonepe: { scheme: "phonepe", path: "pay", pkg: "com.phonepe.app" },
-    gpay: { scheme: "tez", path: "upi/pay", pkg: "com.google.android.apps.nbu.paisa.user" },
-    paytm: { scheme: "paytmmp", path: "pay", pkg: "net.one97.paytm" },
-  };
+const ANDROID_PACKAGES: Record<Exclude<UpiAppId, "any">, string> = {
+  phonepe: "com.phonepe.app",
+  gpay: "com.google.android.apps.nbu.paisa.user",
+  paytm: "net.one97.paytm",
+};
 
+/** Standard UPI intent into a specific app (avoids PhonePe “gallery QR” path). */
 export function buildAndroidAppIntent(appId: UpiAppId, input: UpiPayInput): string | null {
   const q = buildUpiQueryString(input);
   if (appId === "any") {
     return `intent://pay?${q}#Intent;scheme=upi;package=;end;`;
   }
-  const spec = ANDROID_PACKAGES[appId];
-  return `intent://${spec.path}?${q}#Intent;scheme=${spec.scheme};package=${spec.pkg};end;`;
+  const pkg = ANDROID_PACKAGES[appId];
+  return `intent://pay?${q}#Intent;scheme=upi;package=${pkg};end;`;
 }
 
 export function isAndroidUserAgent() {
@@ -80,24 +70,14 @@ export function isAndroidUserAgent() {
   return /Android/i.test(navigator.userAgent);
 }
 
-function navigateToUri(primary: string, fallback?: string) {
+function navigateToUri(uri: string) {
   const anchor = document.createElement("a");
-  anchor.href = primary;
+  anchor.href = uri;
   anchor.rel = "noopener noreferrer";
   anchor.style.display = "none";
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
-
-  if (fallback) {
-    window.setTimeout(() => {
-      try {
-        window.location.assign(fallback);
-      } catch {
-        // ignore
-      }
-    }, 600);
-  }
 }
 
 /** Open a specific UPI app with amount and VPA pre-filled. Call from a user click. */
@@ -105,11 +85,13 @@ export function openUpiApp(appId: UpiAppId, input: UpiPayInput): void {
   if (typeof window === "undefined") return;
 
   const appUri = buildUpiAppUri(appId, input);
-  const intent = isAndroidUserAgent() ? buildAndroidAppIntent(appId, input) : null;
 
-  if (intent) {
-    navigateToUri(intent, appUri);
-    return;
+  if (isAndroidUserAgent()) {
+    const intent = buildAndroidAppIntent(appId, input);
+    if (intent) {
+      navigateToUri(intent);
+      return;
+    }
   }
 
   navigateToUri(appUri);
@@ -122,7 +104,7 @@ export function openUpiApp(appId: UpiAppId, input: UpiPayInput): void {
       } catch {
         // ignore
       }
-    }, 800);
+    }, 500);
   }
 }
 

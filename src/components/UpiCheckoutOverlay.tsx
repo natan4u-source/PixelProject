@@ -54,8 +54,10 @@ export function UpiCheckoutOverlay({
           Cancel
         </button>
 
-        <p className="mt-4 text-center text-[10px] text-white/35">
-          Use Chrome or Safari on mobile. Instagram&apos;s in-app browser may block UPI apps.
+        <p className="mt-4 text-center text-[10px] leading-relaxed text-white/35">
+          <strong className="text-white/50">PhonePe:</strong> If you see a grey bar about “QR from
+          gallery”, tap <strong className="text-white/50">DISMISS</strong> — then tap Pay (₹50 is
+          allowed). Use Chrome/Safari, not Instagram browser.
         </p>
       </div>
     </div>

@@ -192,8 +192,12 @@ function UpiPayContent() {
               </button>
             </div>
 
-            <p className="text-center text-xs text-white/45">
+            <p className="text-center text-xs leading-relaxed text-white/45">
               Desktop: scan QR above. Mobile: tap PhonePe, GPay, or Paytm.
+              <span className="mt-2 block text-white/35">
+                PhonePe may show “QR from gallery” — tap DISMISS, then Pay. Your ₹
+                {amountInr.toLocaleString("en-IN")} order is fine.
+              </span>
             </p>
 
             <button
