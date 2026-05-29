@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteFooter } from "@/components/SiteFooter";
+import { UpiAppPicker } from "@/components/UpiAppPicker";
 import { UpiCheckoutOverlay } from "@/components/UpiCheckoutOverlay";
 import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
@@ -163,12 +164,12 @@ function UpiPayContent() {
           ₹{amountInr.toLocaleString("en-IN")}
         </p>
 
-        {step === "pay" && (
+        {step === "pay" && upiPayment && (
           <div className="mt-8 space-y-6">
-            <p className="text-center text-sm text-white/60">
-              Your UPI app should open automatically. If not, tap{" "}
-              <strong className="text-white">Open UPI app again</strong> in the popup.
-            </p>
+            <UpiAppPicker
+              payment={upiPayment}
+              amountLabel={`₹${amountInr.toLocaleString("en-IN")}`}
+            />
 
             <div className="rounded-2xl border border-white/10 bg-[var(--surface-elevated)]/90 p-6 text-center">
               <Image
@@ -192,18 +193,8 @@ function UpiPayContent() {
             </div>
 
             <p className="text-center text-xs text-white/45">
-              Desktop: scan QR. Mobile: use the popup to open PhonePe, GPay, or Paytm.
+              Desktop: scan QR above. Mobile: tap PhonePe, GPay, or Paytm.
             </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowUpiOverlay(true);
-              }}
-              className="w-full rounded-xl bg-[var(--kamal)] py-3.5 text-sm font-bold text-black hover:bg-[var(--kamal-bright)]"
-            >
-              Open UPI app
-            </button>
 
             <button
               type="button"

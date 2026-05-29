@@ -1,7 +1,7 @@
 "use client";
 
-import { openUpiPayment, type UpiPayInput } from "@/lib/upi-client";
-import { useCallback, useEffect, useRef } from "react";
+import { UpiAppPicker } from "@/components/UpiAppPicker";
+import type { UpiPayInput } from "@/lib/upi-client";
 
 type Props = {
   open: boolean;
@@ -18,22 +18,6 @@ export function UpiCheckoutOverlay({
   onPaid,
   onCancel,
 }: Props) {
-  const openedRef = useRef(false);
-
-  const launchUpi = useCallback(() => {
-    openUpiPayment(payment);
-  }, [payment]);
-
-  useEffect(() => {
-    if (!open) {
-      openedRef.current = false;
-      return;
-    }
-    if (openedRef.current) return;
-    openedRef.current = true;
-    launchUpi();
-  }, [open, launchUpi]);
-
   if (!open) return null;
 
   return (
@@ -50,24 +34,14 @@ export function UpiCheckoutOverlay({
         >
           UPI payment
         </p>
-        <h2 className="mt-3 text-center text-xl font-bold text-white">Complete in your UPI app</h2>
-        <p className="mt-2 text-center text-sm text-white/65">
-          Choose PhonePe, Google Pay, Paytm, or any UPI app. Amount{" "}
-          <strong className="text-white">{amountLabel}</strong> is pre-filled.
-        </p>
+        <h2 className="mt-3 text-center text-xl font-bold text-white">Choose how to pay</h2>
 
-        <button
-          type="button"
-          onClick={launchUpi}
-          className="mt-6 w-full rounded-xl bg-[var(--kamal)] py-3.5 text-sm font-bold text-black hover:bg-[var(--kamal-bright)]"
-        >
-          Open UPI app again
-        </button>
+        <UpiAppPicker payment={payment} amountLabel={amountLabel} className="mt-5" />
 
         <button
           type="button"
           onClick={onPaid}
-          className="mt-3 w-full rounded-xl border border-white/20 py-3 text-sm font-semibold text-white hover:bg-white/5"
+          className="mt-6 w-full rounded-xl border border-white/20 py-3 text-sm font-semibold text-white hover:bg-white/5"
         >
           I&apos;ve paid — enter UPI reference
         </button>
@@ -81,8 +55,7 @@ export function UpiCheckoutOverlay({
         </button>
 
         <p className="mt-4 text-center text-[10px] text-white/35">
-          App didn&apos;t open? Use Chrome/Safari (not Instagram browser), or scan QR on the next
-          screen.
+          Use Chrome or Safari on mobile. Instagram&apos;s in-app browser may block UPI apps.
         </p>
       </div>
     </div>
