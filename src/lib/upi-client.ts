@@ -1,11 +1,6 @@
-import { buildUpiPayUri, buildUpiQueryString } from "./upi-uri";
+import { buildUpiPayUri, buildUpiQueryString, type UpiLinkInput } from "./upi-uri";
 
-export type UpiPayInput = {
-  vpa: string;
-  payeeName: string;
-  amountInr: number;
-  note?: string;
-};
+export type UpiPayInput = UpiLinkInput;
 
 export type UpiAppId = "phonepe" | "gpay" | "paytm" | "any";
 
@@ -14,73 +9,60 @@ export const UPI_APP_OPTIONS: {
   label: string;
   shortLabel: string;
   className: string;
+  /** Paytm uses native scheme; PhonePe/GPay use package-targeted upi:// on Android. */
+  openMode: "native" | "upi-package";
 }[] = [
   {
     id: "phonepe",
     label: "PhonePe",
     shortLabel: "PhonePe",
     className: "bg-[#5f259f] hover:bg-[#4a1d7c] text-white",
+    openMode: "upi-package",
   },
   {
     id: "gpay",
     label: "Google Pay",
     shortLabel: "GPay",
     className: "bg-[#1a73e8] hover:bg-[#1557b0] text-white",
+    openMode: "upi-package",
   },
   {
     id: "paytm",
     label: "Paytm",
     shortLabel: "Paytm",
     className: "bg-[#00baf2] hover:bg-[#0099cc] text-black",
+    openMode: "native",
   },
 ];
 
-type UpiAppSpec = {
-  androidPackage: string;
-  /** Native scheme for Android intent (not generic upi://). */
-  intentScheme: string;
-  intentPath: string;
-  primaryUri: (query: string) => string;
-  fallbackUris?: (query: string) => string[];
+const ANDROID_PACKAGES: Record<Exclude<UpiAppId, "any">, string> = {
+  phonepe: "com.phonepe.app",
+  gpay: "com.google.android.apps.nbu.paisa.user",
+  paytm: "net.one97.paytm",
 };
 
-const UPI_APP_SPECS: Record<Exclude<UpiAppId, "any">, UpiAppSpec> = {
-  phonepe: {
-    androidPackage: "com.phonepe.app",
-    intentScheme: "phonepe",
-    intentPath: "pay",
-    primaryUri: (q) => `phonepe://pay?${q}`,
-  },
-  gpay: {
-    androidPackage: "com.google.android.apps.nbu.paisa.user",
-    intentScheme: "tez",
-    intentPath: "upi/pay",
-    primaryUri: (q) => `tez://upi/pay?${q}`,
-    fallbackUris: (q) => [`gpay://upi/pay?${q}`],
-  },
-  paytm: {
-    androidPackage: "net.one97.paytm",
-    intentScheme: "paytmmp",
-    intentPath: "pay",
-    primaryUri: (q) => `paytmmp://pay?${q}`,
-    fallbackUris: (q) => [`paytmmp://upi/pay?${q}`],
-  },
-};
+/** Paytm — native scheme (works reliably). */
+function buildPaytmUri(q: string) {
+  return `paytmmp://pay?${q}`;
+}
 
-/** Android intent via each app’s own scheme (Paytm-style). Generic upi:// broke PhonePe/GPay. */
-export function buildAndroidAppIntent(appId: UpiAppId, input: UpiPayInput): string | null {
-  const q = buildUpiQueryString(input);
-  if (appId === "any") {
-    return `intent://pay?${q}#Intent;scheme=upi;package=;end;`;
-  }
-  const spec = UPI_APP_SPECS[appId];
-  return `intent://${spec.intentPath}?${q}#Intent;scheme=${spec.intentScheme};package=${spec.androidPackage};end;`;
+function buildPaytmIntent(q: string) {
+  return `intent://pay?${q}#Intent;scheme=paytmmp;package=net.one97.paytm;end;`;
+}
+
+/**
+ * PhonePe / GPay — force standard upi:// inside the app package.
+ * Custom phonepe:// / tez:// links were opening “gallery QR” style screens.
+ */
+function buildPackageUpiIntent(packageName: string, q: string) {
+  return `intent://pay?${q}#Intent;scheme=upi;package=${packageName};end;`;
 }
 
 export function buildUpiAppUri(appId: UpiAppId, input: UpiPayInput): string {
   const q = buildUpiQueryString(input);
   if (appId === "any") return buildUpiPayUri(input);
-  return UPI_APP_SPECS[appId].primaryUri(q);
+  if (appId === "paytm") return buildPaytmUri(q);
+  return buildUpiPayUri({ ...input, txnRef: input.txnRef });
 }
 
 export function isAndroidUserAgent() {
@@ -93,43 +75,40 @@ export function isMobileUserAgent() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
-function navigateToUri(uri: string) {
-  const anchor = document.createElement("a");
-  anchor.href = uri;
-  anchor.rel = "noopener noreferrer";
-  anchor.style.display = "none";
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
+function openUri(uri: string) {
+  window.location.href = uri;
 }
 
-/** Open a specific UPI app — native scheme on Android (matches working Paytm flow). */
+/** Open UPI app — one navigation only (no double redirect). */
 export function openUpiApp(appId: UpiAppId, input: UpiPayInput): void {
   if (typeof window === "undefined") return;
 
+  const payment: UpiPayInput = {
+    ...input,
+    txnRef: input.txnRef ?? `PX${Date.now()}`,
+  };
+  const q = buildUpiQueryString(payment);
+
+  if (appId === "any") {
+    openUri(buildUpiPayUri(payment));
+    return;
+  }
+
   if (isAndroidUserAgent()) {
-    const intent = buildAndroidAppIntent(appId, input);
-    if (intent) {
-      navigateToUri(intent);
+    if (appId === "paytm") {
+      openUri(buildPaytmIntent(q));
       return;
     }
+    openUri(buildPackageUpiIntent(ANDROID_PACKAGES[appId], q));
+    return;
   }
 
-  const primary = buildUpiAppUri(appId, input);
-  navigateToUri(primary);
-
-  if (appId !== "any") {
-    const fallbacks = UPI_APP_SPECS[appId].fallbackUris?.(buildUpiQueryString(input)) ?? [];
-    if (fallbacks[0]) {
-      window.setTimeout(() => {
-        try {
-          window.location.assign(fallbacks[0]!);
-        } catch {
-          // ignore
-        }
-      }, 600);
-    }
+  if (appId === "paytm") {
+    openUri(buildPaytmUri(q));
+    return;
   }
+
+  openUri(buildUpiPayUri(payment));
 }
 
 export function openUpiPayment(input: UpiPayInput): void {
@@ -138,4 +117,19 @@ export function openUpiPayment(input: UpiPayInput): void {
 
 export function buildUpiPaymentUri(input: UpiPayInput) {
   return buildUpiPayUri(input);
+}
+
+export function getManualPaySteps(payment: UpiPayInput) {
+  return {
+    vpa: payment.vpa,
+    amount: payment.amountInr.toFixed(2),
+    note: payment.note ?? "Pixel purchase",
+    payeeName: payment.payeeName,
+  };
+}
+
+/** One-tap copy for Send money → UPI ID flow when deep links show the gallery banner. */
+export function formatPaymentClipboard(payment: UpiPayInput) {
+  const s = getManualPaySteps(payment);
+  return `UPI ID: ${s.vpa}\nAmount: ₹${s.amount}\nNote: ${s.note}`;
 }

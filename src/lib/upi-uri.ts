@@ -3,24 +3,29 @@ export type UpiLinkInput = {
   payeeName: string;
   amountInr: number;
   note?: string;
+  txnRef?: string;
 };
 
-/**
- * NPCI UPI query for deep links.
- * Omit `mode` — mode=04 triggered “QR from gallery” warnings in PhonePe/GPay.
- * Paytm tolerates links as-is; default push (00) works for VPA collect.
- */
+/** Short merchant name — long names break some UPI apps. */
+export function shortenPayeeName(name: string) {
+  const trimmed = name.trim();
+  if (trimmed.length <= 24) return trimmed;
+  return trimmed.slice(0, 24);
+}
+
 export function buildUpiQueryString(input: UpiLinkInput) {
   const params = new URLSearchParams();
   params.set("pa", input.vpa.trim());
-  params.set("pn", input.payeeName.trim().slice(0, 50));
+  params.set("pn", shortenPayeeName(input.payeeName));
   params.set("am", input.amountInr.toFixed(2));
   params.set("cu", "INR");
-  if (input.note) params.set("tn", input.note.trim().slice(0, 80));
+  /** 00 = intent / VPA collect (not QR scan — avoids “gallery QR” UI in some apps). */
+  params.set("mode", "00");
+  params.set("tr", input.txnRef ?? `PX${Date.now()}`);
+  if (input.note) params.set("tn", input.note.trim().slice(0, 40));
   return params.toString();
 }
 
-/** Generic UPI chooser (any installed app). */
 export function buildUpiPayUri(input: UpiLinkInput) {
   return `upi://pay?${buildUpiQueryString(input)}`;
 }
