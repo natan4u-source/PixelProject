@@ -1,9 +1,10 @@
 "use client";
 
 import { SiteFooter } from "@/components/SiteFooter";
+import { UpiCheckoutOverlay } from "@/components/UpiCheckoutOverlay";
 import { PRICE_PER_PIXEL_INR } from "@/lib/config";
-import { buildUpiPayUri } from "@/lib/upi-uri";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
+import type { UpiPayInput } from "@/lib/upi-client";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -20,8 +21,10 @@ function UpiPayContent() {
   const x = parseInt(searchParams.get("x") ?? "", 10);
   const y = parseInt(searchParams.get("y") ?? "", 10);
   const count = parseInt(searchParams.get("count") ?? "", 10);
+  const initialStep = searchParams.get("step") === "claim" ? "claim" : "pay";
 
-  const [step, setStep] = useState<Step>("pay");
+  const [step, setStep] = useState<Step>(initialStep);
+  const [showUpiOverlay, setShowUpiOverlay] = useState(initialStep === "pay");
   const [utr, setUtr] = useState("");
   const [teamSide, setTeamSide] = useState<CanvasSide>(side);
   const [email, setEmail] = useState("");
@@ -58,14 +61,15 @@ function UpiPayContent() {
       ? Number.isFinite(x) && Number.isFinite(y)
       : Number.isFinite(count) && count > 0;
 
-  const upiLink =
-    upiConfig &&
-    buildUpiPayUri({
-      vpa: upiConfig.vpa,
-      payeeName: upiConfig.payeeName,
-      amountInr,
-      note: `Pixel ${SIDE_INFO[teamSide].shortLabel}`,
-    });
+  const upiPayment: UpiPayInput | null =
+    upiConfig && orderValid
+      ? {
+          vpa: upiConfig.vpa,
+          payeeName: upiConfig.payeeName,
+          amountInr,
+          note: `Pixel ${SIDE_INFO[teamSide].shortLabel}`,
+        }
+      : null;
 
   const copyVpa = async () => {
     if (!upiConfig) return;
@@ -100,6 +104,7 @@ function UpiPayContent() {
       if (!res.ok) throw new Error(data.error ?? "Could not save your claim.");
       setSubmissionId(data.submission?.id ?? null);
       setStep("done");
+      setShowUpiOverlay(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Submission failed.");
     } finally {
@@ -122,6 +127,19 @@ function UpiPayContent() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
+      {upiPayment && (
+        <UpiCheckoutOverlay
+          open={showUpiOverlay && step === "pay"}
+          payment={upiPayment}
+          amountLabel={`₹${amountInr.toLocaleString("en-IN")}`}
+          onPaid={() => {
+            setShowUpiOverlay(false);
+            setStep("claim");
+          }}
+          onCancel={() => router.push("/")}
+        />
+      )}
+
       <div className="relative mx-auto max-w-lg px-4 pb-12 pt-8 sm:px-6">
         <Link href="/" className="text-sm text-[var(--kamal-bright)] underline">
           ← Back to canvas
@@ -147,6 +165,11 @@ function UpiPayContent() {
 
         {step === "pay" && (
           <div className="mt-8 space-y-6">
+            <p className="text-center text-sm text-white/60">
+              Your UPI app should open automatically. If not, tap{" "}
+              <strong className="text-white">Open UPI app again</strong> in the popup.
+            </p>
+
             <div className="rounded-2xl border border-white/10 bg-[var(--surface-elevated)]/90 p-6 text-center">
               <Image
                 src={upiConfig?.qrPath ?? "/upi-qr.png"}
@@ -168,23 +191,26 @@ function UpiPayContent() {
               </button>
             </div>
 
-            {upiLink && (
-              <a
-                href={upiLink}
-                className="block w-full rounded-xl bg-[var(--kamal)] py-3.5 text-center text-sm font-bold text-black hover:bg-[var(--kamal-bright)]"
-              >
-                Open UPI app (amount pre-filled)
-              </a>
-            )}
-
             <p className="text-center text-xs text-white/45">
-              On desktop, scan the QR with PhonePe, GPay, or Paytm. On Instagram/WhatsApp browser,
-              open this page in Chrome or Safari if the UPI button does not work.
+              Desktop: scan QR. Mobile: use the popup to open PhonePe, GPay, or Paytm.
             </p>
 
             <button
               type="button"
-              onClick={() => setStep("claim")}
+              onClick={() => {
+                setShowUpiOverlay(true);
+              }}
+              className="w-full rounded-xl bg-[var(--kamal)] py-3.5 text-sm font-bold text-black hover:bg-[var(--kamal-bright)]"
+            >
+              Open UPI app
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowUpiOverlay(false);
+                setStep("claim");
+              }}
               className="w-full rounded-xl border border-white/20 py-3 text-sm font-semibold text-white hover:bg-white/5"
             >
               I&apos;ve paid — enter UPI reference
@@ -259,10 +285,13 @@ function UpiPayContent() {
 
             <button
               type="button"
-              onClick={() => setStep("pay")}
+              onClick={() => {
+                setStep("pay");
+                setShowUpiOverlay(true);
+              }}
               className="w-full text-sm text-white/45 underline"
             >
-              ← Back to QR
+              ← Pay again
             </button>
 
             {error && (

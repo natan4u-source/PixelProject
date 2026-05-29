@@ -10,9 +10,11 @@ import { PermanenceDisclaimer } from "@/components/PermanenceDisclaimer";
 import { PlatformNatureDisclaimer } from "@/components/PlatformNatureDisclaimer";
 import { HomeBusinessStrip } from "@/components/HomeBusinessStrip";
 import { SiteFooter } from "@/components/SiteFooter";
+import { UpiCheckoutOverlay } from "@/components/UpiCheckoutOverlay";
 import { openCashfreeCheckout } from "@/lib/cashfree-client";
 import { PRICE_PER_PIXEL_INR } from "@/lib/config";
 import { SIDE_INFO, type CanvasSide } from "@/lib/sides";
+import type { UpiPayInput } from "@/lib/upi-client";
 import { getVotingClosedMessage, isVotingOpen } from "@/lib/voting";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,6 +36,10 @@ type SelectedPixel = {
   x: number;
   y: number;
 };
+
+type UpiCheckoutOrder =
+  | { side: CanvasSide; type: "single"; x: number; y: number }
+  | { side: CanvasSide; type: "bulk"; count: number };
 
 const FEATURES = [
   {
@@ -62,6 +68,9 @@ export default function HomePage() {
   const [sides, setSides] = useState<Record<CanvasSide, SideStatus> | null>(null);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [upiPaymentsEnabled, setUpiPaymentsEnabled] = useState(false);
+  const [upiVpa, setUpiVpa] = useState("7678571962@hdfc");
+  const [upiPayeeName, setUpiPayeeName] = useState("Ninetyone Software Solutions");
+  const [upiCheckout, setUpiCheckout] = useState<UpiCheckoutOrder | null>(null);
   const router = useRouter();
   const [selected, setSelected] = useState<SelectedPixel | null>(null);
   const [selectedIsSold, setSelectedIsSold] = useState(false);
@@ -82,6 +91,8 @@ export default function HomePage() {
       if (data.sides) setSides(data.sides);
       setPaymentsEnabled(Boolean(data.paymentsEnabled));
       setUpiPaymentsEnabled(Boolean(data.upiPaymentsEnabled));
+      if (data.upiVpa) setUpiVpa(data.upiVpa);
+      if (data.upiPayeeName) setUpiPayeeName(data.upiPayeeName);
       setLoadError(null);
     } catch {
       setLoadError("Could not load saved sales. Check that npm run dev is running.");
@@ -244,7 +255,7 @@ export default function HomePage() {
 
     try {
       if (upiPaymentsEnabled) {
-        router.push(`/pay/upi?side=${side}&type=single&x=${x}&y=${y}`);
+        setUpiCheckout({ side, type: "single", x, y });
         return;
       }
       if (paymentsEnabled) {
@@ -482,6 +493,26 @@ export default function HomePage() {
   const bulkSide = bulkOpenForSide;
   const bulkStatus = bulkSide && sides ? sides[bulkSide] : null;
 
+  const upiPaymentForCheckout: UpiPayInput | null = upiCheckout
+    ? {
+        vpa: upiVpa,
+        payeeName: upiPayeeName,
+        amountInr:
+          upiCheckout.type === "single"
+            ? PRICE_PER_PIXEL_INR
+            : upiCheckout.count * PRICE_PER_PIXEL_INR,
+        note: `Pixel ${SIDE_INFO[upiCheckout.side].shortLabel}`,
+      }
+    : null;
+
+  const upiCheckoutHref = (() => {
+    if (!upiCheckout) return "/pay/upi";
+    if (upiCheckout.type === "single") {
+      return `/pay/upi?side=${upiCheckout.side}&type=single&x=${upiCheckout.x}&y=${upiCheckout.y}&step=claim`;
+    }
+    return `/pay/upi?side=${upiCheckout.side}&type=bulk&count=${upiCheckout.count}&step=claim`;
+  })();
+
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <AnalyticsBeacon path="/" />
@@ -617,6 +648,19 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {upiPaymentForCheckout && (
+        <UpiCheckoutOverlay
+          open={Boolean(upiCheckout)}
+          payment={upiPaymentForCheckout}
+          amountLabel={`₹${upiPaymentForCheckout.amountInr.toLocaleString("en-IN")}`}
+          onPaid={() => {
+            setUpiCheckout(null);
+            router.push(upiCheckoutHref);
+          }}
+          onCancel={() => setUpiCheckout(null)}
+        />
+      )}
 
       <PurchaseReceipt receipt={receipt} onClose={() => setReceipt(null)} />
 
