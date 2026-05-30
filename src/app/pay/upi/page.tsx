@@ -163,14 +163,6 @@ function UpiPayContent() {
 
         {step === "pay" && upiPayment && (
           <div className="mt-8 space-y-6">
-            <UpiAppPicker
-              payment={upiPayment}
-              amountLabel={`₹${amountInr.toLocaleString("en-IN")}`}
-              qrPath={upiConfig?.qrPath ?? "/upi-qr.png"}
-            />
-
-            <UpiPaymentHints amountInr={amountInr} isMobile={isMobile} className="text-xs" />
-
             <button
               type="button"
               onClick={() => {
@@ -181,6 +173,14 @@ function UpiPayContent() {
             >
               I&apos;ve paid — enter UPI reference
             </button>
+
+            <UpiAppPicker
+              payment={upiPayment}
+              amountLabel={`₹${amountInr.toLocaleString("en-IN")}`}
+              qrPath={upiConfig?.qrPath ?? "/upi-qr.png"}
+            />
+
+            <UpiPaymentHints amountInr={amountInr} isMobile={isMobile} className="text-xs" />
           </div>
         )}
 

@@ -48,6 +48,14 @@ export function UpiCheckoutOverlay({
           {isMobile ? "Pay with Paytm or QR" : "Scan QR to pay"}
         </h2>
 
+        <button
+          type="button"
+          onClick={onPaid}
+          className="mt-5 w-full rounded-xl border border-white/20 py-3 text-sm font-semibold text-white hover:bg-white/5"
+        >
+          I&apos;ve paid — enter UPI reference
+        </button>
+
         <UpiAppPicker
           payment={payment}
           amountLabel={amountLabel}
@@ -55,13 +63,11 @@ export function UpiCheckoutOverlay({
           className="mt-5"
         />
 
-        <button
-          type="button"
-          onClick={onPaid}
-          className="mt-6 w-full rounded-xl border border-white/20 py-3 text-sm font-semibold text-white hover:bg-white/5"
-        >
-          I&apos;ve paid — enter UPI reference
-        </button>
+        <UpiPaymentHints
+          amountInr={payment.amountInr}
+          isMobile={isMobile}
+          className="mt-4"
+        />
 
         <button
           type="button"
@@ -70,12 +76,6 @@ export function UpiCheckoutOverlay({
         >
           Cancel
         </button>
-
-        <UpiPaymentHints
-          amountInr={payment.amountInr}
-          isMobile={isMobile}
-          className="mt-4"
-        />
       </div>
     </div>
   );
