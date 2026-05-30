@@ -2,12 +2,14 @@
 
 import { UpiAppPicker } from "@/components/UpiAppPicker";
 import { UpiPaymentHints } from "@/components/UpiPaymentHints";
-import type { UpiPayInput } from "@/lib/upi-client";
+import { isMobileUserAgent, type UpiPayInput } from "@/lib/upi-client";
+import { useEffect, useState } from "react";
 
 type Props = {
   open: boolean;
   payment: UpiPayInput;
   amountLabel: string;
+  qrPath?: string;
   onPaid: () => void;
   onCancel: () => void;
 };
@@ -16,9 +18,16 @@ export function UpiCheckoutOverlay({
   open,
   payment,
   amountLabel,
+  qrPath = "/upi-qr.png",
   onPaid,
   onCancel,
 }: Props) {
+  const [isMobile, setIsMobile] = useState(true);
+
+  useEffect(() => {
+    setIsMobile(isMobileUserAgent());
+  }, []);
+
   if (!open) return null;
 
   return (
@@ -28,16 +37,23 @@ export function UpiCheckoutOverlay({
       aria-modal="true"
       aria-labelledby="upi-checkout-title"
     >
-      <div className="w-full max-w-md rounded-2xl border border-white/15 bg-[var(--surface-elevated)] p-6 shadow-2xl">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/15 bg-[var(--surface-elevated)] p-6 shadow-2xl">
         <p
           id="upi-checkout-title"
           className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-[var(--kamal-bright)]"
         >
           UPI payment
         </p>
-        <h2 className="mt-3 text-center text-xl font-bold text-white">Choose how to pay</h2>
+        <h2 className="mt-3 text-center text-xl font-bold text-white">
+          {isMobile ? "Pay with Paytm or QR" : "Scan QR to pay"}
+        </h2>
 
-        <UpiAppPicker payment={payment} amountLabel={amountLabel} className="mt-5" />
+        <UpiAppPicker
+          payment={payment}
+          amountLabel={amountLabel}
+          qrPath={qrPath}
+          className="mt-5"
+        />
 
         <button
           type="button"
@@ -57,6 +73,7 @@ export function UpiCheckoutOverlay({
 
         <UpiPaymentHints
           amountInr={payment.amountInr}
+          isMobile={isMobile}
           className="mt-4"
         />
       </div>

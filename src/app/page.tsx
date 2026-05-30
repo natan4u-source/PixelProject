@@ -69,6 +69,7 @@ export default function HomePage() {
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [upiPaymentsEnabled, setUpiPaymentsEnabled] = useState(false);
   const [upiVpa, setUpiVpa] = useState("7678571962@hdfc");
+  const [upiQrPath, setUpiQrPath] = useState("/upi-qr.png");
   const [upiPayeeName, setUpiPayeeName] = useState("Ninetyone Software Solutions");
   const [upiCheckout, setUpiCheckout] = useState<UpiCheckoutOrder | null>(null);
   const router = useRouter();
@@ -92,6 +93,7 @@ export default function HomePage() {
       setPaymentsEnabled(Boolean(data.paymentsEnabled));
       setUpiPaymentsEnabled(Boolean(data.upiPaymentsEnabled));
       if (data.upiVpa) setUpiVpa(data.upiVpa);
+      if (data.upiQrPath) setUpiQrPath(data.upiQrPath);
       if (data.upiPayeeName) setUpiPayeeName(data.upiPayeeName);
       setLoadError(null);
     } catch {
@@ -654,6 +656,7 @@ export default function HomePage() {
           open={Boolean(upiCheckout)}
           payment={upiPaymentForCheckout}
           amountLabel={`₹${upiPaymentForCheckout.amountInr.toLocaleString("en-IN")}`}
+          qrPath={upiQrPath}
           onPaid={() => {
             setUpiCheckout(null);
             router.push(upiCheckoutHref);

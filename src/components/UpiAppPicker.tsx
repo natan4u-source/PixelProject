@@ -1,26 +1,37 @@
 "use client";
 
-import { UpiManualPayHelp } from "@/components/UpiManualPayHelp";
-import {
-  openUpiApp,
-  UPI_APP_OPTIONS,
-  type UpiAppId,
-  type UpiPayInput,
-} from "@/lib/upi-client";
+import { UpiQrCode } from "@/components/UpiQrCode";
+import { openUpiApp, isMobileUserAgent, type UpiPayInput } from "@/lib/upi-client";
+import { useEffect, useState } from "react";
 
 type Props = {
   payment: UpiPayInput;
   amountLabel: string;
+  qrPath?: string;
   className?: string;
 };
 
-const paytm = UPI_APP_OPTIONS.find((a) => a.id === "paytm")!;
-const phonepe = UPI_APP_OPTIONS.find((a) => a.id === "phonepe")!;
-const gpay = UPI_APP_OPTIONS.find((a) => a.id === "gpay")!;
+const PAYTM_CLASS =
+  "bg-[#00baf2] hover:bg-[#0099cc] text-black flex w-full flex-col items-center justify-center rounded-xl px-4 py-4 text-sm font-bold transition";
 
-export function UpiAppPicker({ payment, amountLabel, className = "" }: Props) {
-  const onPick = (appId: UpiAppId) => {
-    openUpiApp(appId, payment);
+export function UpiAppPicker({
+  payment,
+  amountLabel,
+  qrPath = "/upi-qr.png",
+  className = "",
+}: Props) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileUserAgent());
+  }, []);
+
+  const copyVpa = async () => {
+    try {
+      await navigator.clipboard.writeText(payment.vpa);
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -29,48 +40,41 @@ export function UpiAppPicker({ payment, amountLabel, className = "" }: Props) {
         Pay <strong className="text-white">{amountLabel}</strong>
       </p>
 
-      <div className="mt-4">
-        <UpiManualPayHelp payment={payment} defaultOpen />
-      </div>
-
-      <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-wider text-white/40">
-        Or open your app
-      </p>
-
-      <button
-        type="button"
-        onClick={() => onPick("paytm")}
-        className={`mt-2 flex w-full flex-col items-center justify-center rounded-xl px-4 py-4 text-sm font-bold transition ${paytm.className}`}
-      >
-        <span className="text-lg leading-none">{paytm.shortLabel}</span>
-        <span className="mt-1 text-[10px] font-normal opacity-90">
-          Recommended — usually opens without the gallery message
-        </span>
-      </button>
-
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        {[phonepe, gpay].map((app) => (
+      {isMobile ? (
+        <>
           <button
-            key={app.id}
             type="button"
-            onClick={() => onPick(app.id)}
-            className={`flex flex-col items-center justify-center rounded-xl px-3 py-4 text-sm font-bold transition ${app.className}`}
+            onClick={() => openUpiApp("paytm", payment)}
+            className={`mt-4 ${PAYTM_CLASS}`}
           >
-            <span className="text-lg leading-none">{app.shortLabel}</span>
-            <span className="mt-1 text-center text-[9px] font-normal leading-tight opacity-90">
-              If grey bar appears: DISMISS → Pay
-            </span>
+            <span className="text-lg leading-none">Paytm</span>
+            <span className="mt-1 text-[10px] font-normal opacity-90">Open Paytm to pay</span>
           </button>
-        ))}
-      </div>
 
-      <button
-        type="button"
-        onClick={() => onPick("any")}
-        className="mt-3 w-full rounded-lg border border-white/15 py-2 text-xs text-white/55 hover:bg-white/5 hover:text-white"
-      >
-        Other UPI app
-      </button>
+          <p className="mt-6 text-center text-[10px] font-bold uppercase tracking-wider text-white/40">
+            Other UPI apps
+          </p>
+          <UpiQrCode
+            qrPath={qrPath}
+            title="Scan QR with PhonePe, GPay, BHIM, etc."
+            className="mt-2"
+          />
+        </>
+      ) : (
+        <UpiQrCode qrPath={qrPath} title="Scan QR with your UPI app" className="mt-4" />
+      )}
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center">
+        <p className="text-xs text-white/50">UPI ID</p>
+        <p className="mt-1 font-mono text-sm text-white">{payment.vpa}</p>
+        <button
+          type="button"
+          onClick={copyVpa}
+          className="mt-2 text-xs text-[var(--kamal-bright)] underline"
+        >
+          Copy UPI ID
+        </button>
+      </div>
     </div>
   );
 }
