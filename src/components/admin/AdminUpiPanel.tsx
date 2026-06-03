@@ -147,10 +147,10 @@ export function AdminUpiPanel({ secret }: Props) {
 
   return (
     <section className="mt-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-      <h2 className="text-xl font-bold">UPI payments</h2>
+      <h2 className="text-xl font-bold">Razorpay payment claims</h2>
       <p className="mt-2 text-sm text-[var(--muted)]">
-        Users pay via QR / UPI ID, submit UTR + team. Upload bank CSV to match, then fulfill to open
-        pixels.
+        Users pay via Razorpay, submit payment ID + team. Upload bank CSV to match, then fulfill to
+        open pixels.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">

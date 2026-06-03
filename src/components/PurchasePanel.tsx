@@ -13,7 +13,7 @@ type Props = {
   ready: boolean;
   loading: boolean;
   paymentsEnabled?: boolean;
-  upiPaymentsEnabled?: boolean;
+  razorpayPaymentsEnabled?: boolean;
   votingOpen?: boolean;
   onBuy: () => void;
   onClear: () => void;
@@ -29,7 +29,7 @@ export function PurchasePanel({
   ready,
   loading,
   paymentsEnabled = false,
-  upiPaymentsEnabled = false,
+  razorpayPaymentsEnabled = false,
   votingOpen = true,
   onBuy,
   onClear,
@@ -85,8 +85,8 @@ export function PurchasePanel({
               ? "Processing…"
               : !votingOpen
                 ? "Competition ended"
-                : upiPaymentsEnabled
-                  ? `Pay with UPI ${priceLabel}`
+                : razorpayPaymentsEnabled
+                  ? `Pay with Razorpay ${priceLabel}`
                   : paymentsEnabled
                     ? `Pay ${priceLabel}`
                     : `Buy (demo) ${priceLabel}`}

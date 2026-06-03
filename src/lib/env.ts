@@ -1,3 +1,5 @@
+import { getRazorpayPaymentUrl } from "./razorpay-config";
+
 export type PaymentProvider = "cashfree";
 
 export function getDatabaseUrl() {
@@ -66,17 +68,23 @@ export function getUpiVpa() {
   return process.env.NEXT_PUBLIC_UPI_VPA?.trim() || DEFAULT_UPI_VPA;
 }
 
+export function isRazorpayPixelPaymentsEnabled() {
+  return Boolean(getRazorpayPaymentUrl());
+}
+
+/** Manual UPI flow — off when Razorpay is used for pixels */
 export function isUpiPaymentsEnabled() {
+  if (isRazorpayPixelPaymentsEnabled()) return false;
   return Boolean(getUpiVpa());
 }
 
-/** Online checkout: UPI for pixels when configured; Cashfree still used for ebooks. */
+/** Cashfree — ebooks only */
 export function isPaymentsEnabled() {
   return isCashfreeEnabled();
 }
 
 export function isPixelCheckoutEnabled() {
-  return isUpiPaymentsEnabled() || isCashfreeEnabled();
+  return isRazorpayPixelPaymentsEnabled();
 }
 
 export function isProduction() {

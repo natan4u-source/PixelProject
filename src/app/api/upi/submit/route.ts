@@ -3,10 +3,10 @@ import { apiError } from "@/lib/api-error";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { validateBulkPurchase, validateSinglePurchase } from "@/lib/payments";
 import { createUpiSubmission } from "@/lib/upi-submissions";
-import { isUpiPaymentsEnabled } from "@/lib/env";
+import { isRazorpayPixelPaymentsEnabled, isUpiPaymentsEnabled } from "@/lib/env";
 import { sideFromBody } from "@/lib/side-params";
 import { blockWhenVotingClosed } from "@/lib/voting-guard";
-import { isValidUtr } from "@/lib/upi-uri";
+import { isValidPaymentReference } from "@/lib/payment-reference";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +18,8 @@ export async function POST(request: Request) {
     const votingBlocked = blockWhenVotingClosed();
     if (votingBlocked) return votingBlocked;
 
-    if (!isUpiPaymentsEnabled()) {
-      return NextResponse.json({ error: "UPI payments are not enabled." }, { status: 503 });
+    if (!isRazorpayPixelPaymentsEnabled() && !isUpiPaymentsEnabled()) {
+      return NextResponse.json({ error: "Pixel payments are not enabled." }, { status: 503 });
     }
 
     let body: {
@@ -39,9 +39,12 @@ export async function POST(request: Request) {
     }
 
     const utr = body.utr?.trim();
-    if (!utr || !isValidUtr(utr)) {
+    if (!utr || !isValidPaymentReference(utr)) {
       return NextResponse.json(
-        { error: "Enter your 12-digit UPI reference number (UTR) from the payment receipt." },
+        {
+          error:
+            "Enter your Razorpay payment ID (pay_…) or 12-digit UTR from the payment receipt.",
+        },
         { status: 400 },
       );
     }

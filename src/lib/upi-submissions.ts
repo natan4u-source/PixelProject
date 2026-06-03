@@ -4,7 +4,7 @@ import { PRICE_PER_PIXEL_INR } from "./config";
 import { withFileLock } from "./file-lock";
 import { UPI_SUBMISSIONS_PATH, DATA_DIR } from "./paths";
 import type { CanvasSide } from "./sides";
-import { normalizeUtr } from "./upi-uri";
+import { normalizePaymentReference } from "./payment-reference";
 
 export type UpiSubmissionStatus =
   | "pending"
@@ -95,7 +95,7 @@ export async function createUpiSubmission(input: {
   count?: number;
   contactEmail?: string;
 }): Promise<UpiSubmission> {
-  const utrNormalized = normalizeUtr(input.utr);
+  const utrNormalized = normalizePaymentReference(input.utr);
   if (!utrNormalized || utrNormalized.length < 10) {
     throw new Error("Enter a valid UPI reference number (UTR).");
   }

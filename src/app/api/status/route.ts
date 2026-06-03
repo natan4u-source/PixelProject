@@ -13,9 +13,11 @@ import {
   isPostgresEnabled,
   isUpiPaymentsEnabled,
   isPixelCheckoutEnabled,
+  isRazorpayPixelPaymentsEnabled,
+  getUpiVpa,
 } from "@/lib/env";
 import { getUpiPayeeName, UPI_QR_IMAGE_PATH } from "@/lib/upi-config";
-import { getUpiVpa } from "@/lib/env";
+import { getRazorpayPaymentUrl } from "@/lib/razorpay-config";
 import { ensureDualSideLayout } from "@/lib/layout-migrate";
 import { ensureSalesMigrated } from "@/lib/migrate-sales";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
@@ -70,6 +72,8 @@ export async function GET(request: Request) {
         sides,
         paymentsEnabled: isPaymentsEnabled(),
         upiPaymentsEnabled: isUpiPaymentsEnabled(),
+        razorpayPaymentsEnabled: isRazorpayPixelPaymentsEnabled(),
+        razorpayPaymentUrl: getRazorpayPaymentUrl(),
         pixelCheckoutEnabled: isPixelCheckoutEnabled(),
         paymentProvider: getActivePaymentProvider(),
         cashfreeEnv: getCashfreeEnv(),
@@ -103,6 +107,8 @@ export async function GET(request: Request) {
       ...status,
       paymentsEnabled: isPaymentsEnabled(),
       upiPaymentsEnabled: isUpiPaymentsEnabled(),
+      razorpayPaymentsEnabled: isRazorpayPixelPaymentsEnabled(),
+      razorpayPaymentUrl: getRazorpayPaymentUrl(),
       pixelCheckoutEnabled: isPixelCheckoutEnabled(),
       paymentProvider: getActivePaymentProvider(),
       cashfreeEnv: getCashfreeEnv(),
